@@ -10,6 +10,10 @@ import os
 from dotenv import load_dotenv
 from app.models.base import Base
 
+import app.models.channels
+import app.models.user
+
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")

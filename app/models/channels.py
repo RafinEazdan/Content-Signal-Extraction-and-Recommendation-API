@@ -1,0 +1,12 @@
+from sqlalchemy import Column, ForeignKey, Integer, String
+
+from .base import Base
+
+class Channel(Base):
+    __tablename__ = "channels"
+    id = Column(Integer, primary_key=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    channel_id = Column(Integer, nullable=False)
+    platform = Column(String, nullable=False)
+    channel_title = Column(String, nullable=False)
+    subscriber_count = Column(Integer, nullable=False)
