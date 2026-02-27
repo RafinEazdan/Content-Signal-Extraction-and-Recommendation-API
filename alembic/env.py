@@ -8,9 +8,9 @@ from alembic import context
 
 import os
 from dotenv import load_dotenv
-from app.models.base import Base
+from app.database.base import Base
 
-import app.models.channels
+import app.models.channel
 import app.models.user
 
 

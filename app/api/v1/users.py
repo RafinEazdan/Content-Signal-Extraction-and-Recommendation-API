@@ -1,7 +1,7 @@
 from jinja2 import DictLoader
-from app.auth.oauth import get_current_user
-import app.utils as utils
-from app.database.database import get_db
+from app.services.oauth import get_current_user
+import app.core.security as security
+from app.database.session import get_db
 from fastapi import Depends, HTTPException, status, Response, APIRouter
 from psycopg import Connection
 from psycopg.errors import UniqueViolation
@@ -27,7 +27,7 @@ router = APIRouter(
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
 def post_users( user:schemas.UserCreate, db: Connection = Depends(get_db)):
      # Hashing the Password
-     hashed_pass = utils.hash(user.password)
+     hashed_pass = security.hash(user.password)
      user.password = hashed_pass
      try:
         with db.cursor() as cursor:

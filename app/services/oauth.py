@@ -8,7 +8,7 @@ from jwt.exceptions import InvalidTokenError
 from psycopg import Connection
 
 import app.schemas.users as schemas
-from app.database.database import get_db
+from app.database.session import get_db
 
 load_dotenv()
 

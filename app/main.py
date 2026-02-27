@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 
-from app.routers import users
-from app.auth.oauth import get_current_user
-from app.database.database import get_db
-from app.routers import auth
+from app.api import users
+from app.services.oauth import get_current_user
+from app.database.session import get_db
+from app.api import auth
 
 app = FastAPI()
 

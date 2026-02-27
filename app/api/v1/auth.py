@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg import Connection
-import app.utils as utils
-from app.auth import oauth
+import app.core.security as security
+from app.services import oauth
 import app.schemas.users as user_schema
-from app.database.database import get_db
+from app.database.session import get_db
 
 router = APIRouter(
     tags=["Login"]
@@ -18,7 +18,7 @@ def login(user_credential: OAuth2PasswordRequestForm = Depends(), db: Connection
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid Credentials')
-    verify_pass = utils.verify_pass(user_credential.password, user["password"])
+    verify_pass = security.verify_pass(user_credential.password, user["password"])
 
     if verify_pass is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid Credentials')
