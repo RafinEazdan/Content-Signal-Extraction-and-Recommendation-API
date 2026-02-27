@@ -1,16 +1,15 @@
-import os
-from dotenv import load_dotenv
 import psycopg
 from psycopg.rows import dict_row
 import time
+from app.core.config import settings
 
-load_dotenv()
+DATABASE_URL = settings.DATABASE_URL
 
 def get_db():
     while True:
         try:
             conn = psycopg.connect(
-                os.getenv("DATABASE_URL"),
+                DATABASE_URL,
                 row_factory=dict_row
             )
             print("DB is connected!!!!!!")
