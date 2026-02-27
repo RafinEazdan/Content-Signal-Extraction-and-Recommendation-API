@@ -9,5 +9,6 @@ class Channel(Base):
     channel_id = Column(Integer, nullable=False)
     platform = Column(String, nullable=True)
     channel_title = Column(String, nullable=False)
+    channel_handle = Column(String, nullable=False)
     subscriber_count = Column(Integer, nullable=True)
     upload_playlist = Column(String, nullable=True)

@@ -12,13 +12,14 @@ router = APIRouter(
 )
 
 @router.post('/', response_model = ChannelResponse)
-async def channels(channel_handle: ChannelRequest ,db: Connection= Depends(get_db), current_user: dict = Depends(get_current_user)):
-    CHANNEL_ID, channel_name, subscriber_count, uploads_playlist = await get_channel(channel_handle)
+async def fetch_channels(channel_handle: ChannelRequest ,db: Connection= Depends(get_db), current_user: dict = Depends(get_current_user)):
+    CHANNEL_ID, channel_name, subscriber_count, uploads_playlist = await get_channel(channel_handle.channel_handle)
 
     # print(CHANNEL_ID, channel_name, subscriber_count, uploads_playlist)
 
     return {
     "channel_id": CHANNEL_ID,
     "channel_name": channel_name,
+    "channel_handle": channel_handle.channel_handle,
     "subscriber_count": subscriber_count
 }

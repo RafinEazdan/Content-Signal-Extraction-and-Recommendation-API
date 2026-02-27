@@ -7,4 +7,5 @@ class ChannelRequest(BaseModel):
 class ChannelResponse(BaseModel):
     channel_id: str
     channel_name: str
+    channel_handle: str
     subscriber_count: int
