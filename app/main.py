@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 
-from app.api import users
+from app.api.v1 import users
 from app.services.oauth import get_current_user
 from app.database.session import get_db
-from app.api import auth
+from app.api.v1 import auth
 
 app = FastAPI()
 
