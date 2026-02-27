@@ -6,7 +6,7 @@ from app.core.config import settings
 
 YT_API_KEY = settings.YT_API_KEY
 
-def get_channel(channel_handle):
+async def get_channel(channel_handle):
     search_url = "https://www.googleapis.com/youtube/v3/search"
     search_params = {
     "part": "snippet",
@@ -43,6 +43,9 @@ def get_channel(channel_handle):
     subscriber_count = item["statistics"].get("subscriberCount", "Hidden")
     uploads_playlist = item["contentDetails"]["relatedPlaylists"]["uploads"]
 
+    return CHANNEL_ID, channel_name, subscriber_count, uploads_playlist
+
+def get_video_list(CHANNEL_ID, uploads_playlist ):
 # Step 3: Get all videos
     videos = []
     next_page = None
@@ -77,3 +80,4 @@ def get_channel(channel_handle):
         }
         for v in videos
 ]
+    return video_list

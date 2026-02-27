@@ -10,4 +10,4 @@ class Channel(Base):
     platform = Column(String, nullable=True)
     channel_title = Column(String, nullable=False)
     subscriber_count = Column(Integer, nullable=True)
-    total_no_of_videos = Column(Integer, nullable=True)
+    upload_playlist = Column(String, nullable=True)
