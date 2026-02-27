@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
 
-class ChannelID(BaseModel):
-    channel_id: str
+class ChannelRequest(BaseModel):
+    channel_handle: str
 
 class ChannelResponse(BaseModel):
     channel_id: str
