@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD : str
     ACCESS_TOKEN_EXPIRE_MINUTES : int
     ALGORITHM : str
+    REDIS_URL : str
 
     class Config:
         env_file = '.env'
