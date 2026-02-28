@@ -6,7 +6,7 @@ class Channel(Base):
     __tablename__ = "channels"
     id = Column(Integer, primary_key=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    channel_id = Column(Integer, nullable=False)
+    channel_id = Column(String, nullable=False, unique=True)
     platform = Column(String, nullable=True)
     channel_title = Column(String, nullable=False)
     channel_handle = Column(String, nullable=False)
