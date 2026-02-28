@@ -39,15 +39,15 @@ async def get_channel(channel_handle):
 
     item = res["items"][0]
 
-    channel_name = item["snippet"]["title"]
+    channel_title = item["snippet"]["title"]
     subscriber_count = item["statistics"].get("subscriberCount", "Hidden")
     subscriber_count = int(subscriber_count) if subscriber_count else None
 
-    upload_playlist = item["contentDetails"]["relatedPlaylists"]["upload"]
+    upload_playlist = item["contentDetails"]["relatedPlaylists"]["uploads"]
 
     return {
     "channel_id": CHANNEL_ID,
-    "channel_name": channel_name,
+    "channel_title": channel_title,
     "subscriber_count": subscriber_count,
     "upload_playlist": upload_playlist,
 }
