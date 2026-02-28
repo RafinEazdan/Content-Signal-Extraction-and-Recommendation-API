@@ -4,11 +4,12 @@ from app.services.api_get_channel import get_channel
 
 redis_expiry = 604800
 
-async def fetch_create_channel(channel_handle, user_id, db, redis):
-    cache_key = f"channel:{user_id}:{channel_handle}"
+async def fetch_create_channel(channel_handle, db, redis):
+    cache_key = f"channel:{channel_handle}"
 
     cached = await redis.get(cache_key)
     if cached:
+        print("From Redis")
         return json.loads(cached)
     
     channel = db.execute(
@@ -16,14 +17,15 @@ async def fetch_create_channel(channel_handle, user_id, db, redis):
     ).fetchone()
 
     if channel:
-        await redis.set(cache_key, json.dumps(channel), ex=redis_expiry)
+        print("From DataBase")
+        channel = dict(channel)
+        await redis.set(cache_key, json.dumps(channel), expire=redis_expiry)
         return channel
-    
+    print("From API")
     channel_data = await get_channel(channel_handle)
 
     insert_query = """
         INSERT INTO channels (
-            user_id,
             channel_id,
             platform,
             channel_title,
@@ -31,22 +33,19 @@ async def fetch_create_channel(channel_handle, user_id, db, redis):
             subscriber_count,
             upload_playlist
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id, user_id, channel_id, platform,
-                  channel_title, channel_handle,
-                  subscriber_count, upload_playlist;
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING *;
     """
 
     inserted = db.execute(
         insert_query,
         (
-            user_id,
             channel_data["channel_id"],
             "youtube",
-            channel_data["channel_name"],
+            channel_data["channel_title"],
             channel_handle,
             channel_data["subscriber_count"],
-            channel_data["uploads_playlist"],
+            channel_data["upload_playlist"],
         )
     ).fetchone()
 
@@ -54,7 +53,6 @@ async def fetch_create_channel(channel_handle, user_id, db, redis):
 
     inserted_dict = dict(inserted)
 
-    # 5️⃣ Store in Redis
-    await redis.set(cache_key, json.dumps(inserted_dict), ex=redis_expiry)
+    await redis.set(cache_key, json.dumps(inserted_dict), expire=redis_expiry)
 
     return inserted_dict

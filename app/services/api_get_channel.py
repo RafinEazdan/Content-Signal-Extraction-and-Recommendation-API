@@ -41,11 +41,18 @@ async def get_channel(channel_handle):
 
     channel_name = item["snippet"]["title"]
     subscriber_count = item["statistics"].get("subscriberCount", "Hidden")
-    uploads_playlist = item["contentDetails"]["relatedPlaylists"]["uploads"]
+    subscriber_count = int(subscriber_count) if subscriber_count else None
 
-    return CHANNEL_ID, channel_name, subscriber_count, uploads_playlist
+    upload_playlist = item["contentDetails"]["relatedPlaylists"]["upload"]
 
-def get_video_list(CHANNEL_ID, uploads_playlist ):
+    return {
+    "channel_id": CHANNEL_ID,
+    "channel_name": channel_name,
+    "subscriber_count": subscriber_count,
+    "upload_playlist": upload_playlist,
+}
+
+def get_video_list(CHANNEL_ID, upload_playlist ):
 # Step 3: Get all videos
     videos = []
     next_page = None
@@ -54,7 +61,7 @@ def get_video_list(CHANNEL_ID, uploads_playlist ):
         playlist_url = "https://www.googleapis.com/youtube/v3/playlistItems"
         playlist_params = {
         "part": "snippet,contentDetails",
-        "playlistId": uploads_playlist,
+        "playlistId": upload_playlist,
         "maxResults": 50,
         "pageToken": next_page,
         "key": YT_API_KEY
