@@ -4,7 +4,7 @@ from psycopg import Connection
 from app.database.session import get_db
 from app.schemas.channels import ChannelRequest, ChannelResponse
 from app.services.oauth import get_current_user
-from app.services.get_channel import get_channel
+from app.services.api_get_channel import get_channel
 
 router = APIRouter(
     prefix='/channels',
