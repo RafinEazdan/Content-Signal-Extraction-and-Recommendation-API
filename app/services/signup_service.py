@@ -1,5 +1,3 @@
-
-from fastapi import Depends
 from psycopg import Connection
 from core.security import hash
 from services.otp_service import OTPService
