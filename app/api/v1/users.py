@@ -41,6 +41,9 @@ def post_users( user:schemas.UserCreate, db: Connection = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="Email Already Registered. Try login!")
      
 
+@router.post('/verify')
+
+
 @router.get('/profile', response_model=schemas.UserResponse)
 def get_users(db: Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
     if current_user["id"] is None:

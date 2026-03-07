@@ -5,7 +5,7 @@ from app.database.session import get_db
 from app.schemas.channels import ChannelRequest, ChannelResponse
 from app.services.oauth import get_current_user
 from app.services.api_get_channel import get_channel
-from app.redis.depends import get_redis
+from app.redis.dependencies import get_redis
 from app.services.fetch_create_channel import fetch_create_channel
 
 
