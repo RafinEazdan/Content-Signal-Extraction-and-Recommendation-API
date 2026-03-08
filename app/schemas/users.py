@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    username: str
     email: EmailStr
     id: int
     created_at: datetime
@@ -19,6 +20,11 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
 
 class Token(BaseModel):
     token: str

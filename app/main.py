@@ -15,3 +15,7 @@ app.include_router(channel.router)
 def root():
     return {"Hello":"World!"}
 
+
+# @app.on_event("shutdown")
+# def shutdown():
+#     pool.close()
