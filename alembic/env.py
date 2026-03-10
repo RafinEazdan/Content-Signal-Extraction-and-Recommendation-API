@@ -12,6 +12,7 @@ from app.database.base import Base
 
 import app.models.channel
 import app.models.user
+import app.models.video
 
 
 load_dotenv()
