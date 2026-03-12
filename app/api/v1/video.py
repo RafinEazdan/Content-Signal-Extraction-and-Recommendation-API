@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 @router.post('/store', response_model=VideoResponse)
-async def store_video(req: VideoRequest, db: Connection = Depends(get_db)):
+async def store_video(req: VideoRequest, db: Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
     service = VideoService(db=db)
     result = await service.store_videos(req.channel_handle)
 

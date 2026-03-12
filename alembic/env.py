@@ -13,6 +13,7 @@ from app.database.base import Base
 import app.models.channel
 import app.models.user
 import app.models.video
+import app.models.video_metrics
 
 
 load_dotenv()
