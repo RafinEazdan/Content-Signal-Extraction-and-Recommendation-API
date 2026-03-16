@@ -18,22 +18,42 @@ class CommentService:
 
         request = youtube.commentThreads().list(
             part="snippet",
-            videoId="tXt1m0Pmc0s",
+            videoId=video_id,
             maxResults=100
         )
         response = request.execute()
 
-        comments = []
+        comments = {}
 
         for item in response['items']:
             comment = item['snippet']['topLevelComment']['snippet']
-            comments.append([
-                comment['authorDisplayName'],
-                comment['publishedAt'],
-                comment['likeCount'],
-                comment['textDisplay']
-            ])
+            comments.append({
+                "comment_id": item['snippet']['topLevelComment']['id'],
+                "author_name": comment['authorDisplayName'],
+                "published_at": comment['publishedAt'],
+                "like_count": comment['likeCount'],
+                "text": comment['textDisplay'],
+                "video_db_id": video_db_id
+            })
 
+        cursor = self.db.cursor()
+        for comment in comments:
+            cursor.execute(
+            """
+            INSERT INTO comments (comment_id, author_name, published_at, like_count, text, video_db_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (comment_id) DO NOTHING
+            """,
+            (
+                comment["comment_id"],
+                comment["author_name"],
+                comment["published_at"],
+                comment["like_count"],
+                comment["text"],
+                comment["video_db_id"]
+            )
+            )
+        self.db.commit()
 
     def _get_video_id(self, video_db_id):
         try:

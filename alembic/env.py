@@ -14,6 +14,7 @@ import app.models.channel
 import app.models.user
 import app.models.video
 import app.models.video_metrics
+import app.models.comments
 
 
 load_dotenv()
