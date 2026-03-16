@@ -1,6 +1,8 @@
 from fastapi import HTTPException
+from passlib import exc
 from app.core.config import settings
 
+from app.ai.pipeline import analyze_comments
 
 YT_API_KEY = settings.YT_API_KEY
 
@@ -119,3 +121,39 @@ class CommentService:
 
         except Exception as e:
             raise Exception(f"Database insert failed: {e}")
+        
+
+    def _get_comments(self, video_db_id):
+            try:
+                cursor = self.db.cursor()
+                cursor.execute("SELECT comment_id, text from comments where video_db_id::integer = %s;",(video_db_id,))
+                rows = cursor.fetchall()
+
+                if not rows:
+                    raise HTTPException(status_code=404, detail="Comments not found!")
+                
+
+                comments = []
+                comments = [
+                            {"comment_id": row["comment_id"], "text": row["text"]}
+                            for row in rows
+                            ]
+                return comments
+
+            except HTTPException:
+                print("HTTPException in _get_comments, re-raising")
+                raise
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error occured while fetching from database: {e}")
+            
+            finally:
+                cursor.close()
+            
+
+    async def process_comments(self, video_db_id):
+        comments = self._get_comments(video_db_id)
+        analysis = await analyze_comments(comments)
+        if not analysis:
+            raise HTTPException(status_code=500, detail=f"Error fetching from the AI models")
+        return analysis
