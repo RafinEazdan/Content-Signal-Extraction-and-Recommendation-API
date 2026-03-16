@@ -1,4 +1,4 @@
-# Random Thought API - Detailed Project Status
+# YouTube Content Recommendation - Detailed Project Status
 
 This repository contains a FastAPI backend that currently implements:
 
@@ -682,4 +682,4 @@ Completed and working in codebase:
 - Comment fetch + deduplicated storage pipeline
 - Full migration chain from initial users table to comments table
 
-This README now reflects the implementation status currently present in the repository.
+This README is made with GPT-5.3-Codex to document the current state of the codebase in great detail, including all implemented features, data models, API contracts, and known implementation notes.
