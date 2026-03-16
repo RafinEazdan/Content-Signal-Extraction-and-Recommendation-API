@@ -1,71 +1,121 @@
 from fastapi import HTTPException
-import googleapiclient.discovery
 from app.core.config import settings
 
 
 YT_API_KEY = settings.YT_API_KEY
+
+import httpx
+from fastapi import HTTPException
 
 class CommentService:
     def __init__(self, db):
         self.db = db
 
     async def fetch_and_store_comment(self, video_db_id):
-        video_id = self._get_video_id(video_db_id)
-        api_service_name = "youtube"
-        api_version = "v3"
-        youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, developerKey=YT_API_KEY)
+        try:
+            video_id = self._get_video_id(video_db_id)
 
-        request = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=100
-        )
-        response = request.execute()
+            url = "https://www.googleapis.com/youtube/v3/commentThreads"
 
-        comments = {}
+            comments = []
+            next_page_token = None
 
-        for item in response['items']:
-            comment = item['snippet']['topLevelComment']['snippet']
-            comments.append({
-                "comment_id": item['snippet']['topLevelComment']['id'],
-                "author_name": comment['authorDisplayName'],
-                "published_at": comment['publishedAt'],
-                "like_count": comment['likeCount'],
-                "text": comment['textDisplay'],
-                "video_db_id": video_db_id
-            })
+            async with httpx.AsyncClient(timeout=30) as client:
 
-        cursor = self.db.cursor()
-        for comment in comments:
-            cursor.execute(
-            """
-            INSERT INTO comments (comment_id, author_name, published_at, like_count, text, video_db_id)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (comment_id) DO NOTHING
-            """,
-            (
-                comment["comment_id"],
-                comment["author_name"],
-                comment["published_at"],
-                comment["like_count"],
-                comment["text"],
-                comment["video_db_id"]
-            )
-            )
-        self.db.commit()
+                while True:
 
-    def _get_video_id(self, video_db_id):
+                    params = {
+                        "part": "snippet",
+                        "videoId": video_id,
+                        "maxResults": 100,
+                        "key": YT_API_KEY
+                    }
+
+                    if next_page_token:
+                        params["pageToken"] = next_page_token
+
+                    response = await client.get(url, params=params)
+
+                    if response.status_code != 200:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"YouTube API error: {response.text}"
+                        )
+
+                    data = response.json()
+
+                    for item in data.get("items", []):
+
+                        snippet = item["snippet"]["topLevelComment"]["snippet"]
+
+                        comments.append({
+                            "comment_id": item["snippet"]["topLevelComment"]["id"],
+                            "author_name": snippet["authorDisplayName"],
+                            "published_at": snippet["publishedAt"],
+                            "like_count": snippet["likeCount"],
+                            "text": snippet["textDisplay"],
+                            "video_db_id": video_db_id
+                        })
+
+                    next_page_token = data.get("nextPageToken")
+
+                    if not next_page_token:
+                        break
+
+            self._store_comments(comments)
+
+            return comments
+        
+        except HTTPException:
+            raise  # ← don't wrap it again in a 500
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error occurred while fetching comments: {str(e)}")
+
+    def _get_video_id(self, video_db_id:int):
         try:
             cursor = self.db.cursor()
             cursor.execute("SELECT video_id FROM videos WHERE id = %s", (video_db_id,))
-            video_id = cursor.fetchone()
-
-            if not video_id:
-                raise HTTPException(status_code=404, detail= "No such video found" )
+            row = cursor.fetchone()
+            # print(row)
+            if not row:
+                raise HTTPException(status_code=404, detail="No such video found")
+            return row["video_id"]   # return the value directly, not a dict
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error fetching video id: {e}")
             
-            return video_id
+    def _store_comments(self, comments):
 
+        if not comments:
+            return
+
+        try:
+            with self.db.cursor() as cursor:
+
+                values = [
+                    (
+                        c["comment_id"],
+                        c["author_name"],
+                        c["published_at"],
+                        c["like_count"],
+                        c["text"],
+                        c["video_db_id"]
+                    )
+                    for c in comments
+                ]
+
+                cursor.executemany(
+                    """
+                    INSERT INTO comments
+                    (comment_id, author_name, published_at, like_count, text, video_db_id)
+                    VALUES (%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (comment_id) DO NOTHING
+                    """,
+                    values
+                )
+
+            self.db.commit()
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error: {e}.")
+            raise Exception(f"Database insert failed: {e}")
