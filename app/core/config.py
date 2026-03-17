@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES : int
     ALGORITHM : str
     REDIS_URL : str
+    HF_API_KEY : str
 
     class Config:
         env_file = '.env'
