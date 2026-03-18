@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.services.oauth import get_current_user
 from app.database.session import get_db
-from app.api.v1 import auth, channel, users, video, metric,comment, comment_analysis
+from app.api.v1 import auth, channel, users, video, metric, comment, comment_analysis
 
 app = FastAPI()
 
