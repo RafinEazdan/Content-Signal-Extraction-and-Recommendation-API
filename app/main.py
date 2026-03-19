@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.services.oauth import get_current_user
 from app.database.session import get_db
-from app.api.v1 import auth, channel, users, video, metric,comment, comment_analysis
+from app.api.v1 import auth, channel, users, video, metric,comment, comment_analysis, video_recommendation
 
 app = FastAPI()
 
@@ -14,6 +14,7 @@ app.include_router(video.router)
 app.include_router(metric.router)
 app.include_router(comment.router)
 app.include_router(comment_analysis.router)
+app.include_router(video_recommendation.router)
 
 
 @app.get("/")

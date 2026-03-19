@@ -3,6 +3,7 @@ from passlib import exc
 from app.core.config import settings
 
 from app.ai.pipeline import analyze_comments
+from app.ai.comment_topic_extractor import CommentTopicExtractor
 
 YT_API_KEY = settings.YT_API_KEY
 
@@ -150,6 +151,33 @@ class CommentService:
             finally:
                 cursor.close()
             
+    def _get_comments_with_likes(self, video_db_id):
+            try:
+                cursor = self.db.cursor()
+                cursor.execute("SELECT comment_id, text, like_count from comments where video_db_id::integer = %s;",(video_db_id,))
+                rows = cursor.fetchall()
+
+                if not rows:
+                    raise HTTPException(status_code=404, detail="Comments not found!")
+                
+
+                comments = []
+                comments = [
+                            {"comment_id": row["comment_id"], "text": row["text"], "likes": row["like_count"]}
+                            for row in rows
+                            ]
+                return comments
+
+            except HTTPException:
+                print("HTTPException in _get_comments, re-raising")
+                raise
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error occured while fetching from database: {e}")
+            
+            finally:
+                cursor.close()
+
 
     async def process_comments(self, video_db_id):
         comments = self._get_comments(video_db_id)
@@ -157,3 +185,19 @@ class CommentService:
         if not analysis:
             raise HTTPException(status_code=500, detail=f"Error fetching from the AI models")
         return analysis
+    
+
+    def generate_titles(self, video_db_id):
+        try:
+
+            extractor = CommentTopicExtractor()
+            comments = self._get_comments(video_db_id)
+            topics = extractor.extract_topics(comments)
+            titles = extractor.generate_titles(topics)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error occurred while generating titles: {str(e)}")
+
+        return titles
