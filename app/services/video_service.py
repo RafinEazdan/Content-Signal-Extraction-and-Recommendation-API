@@ -48,7 +48,7 @@ class VideoService:
             playlist_params = {
                     "part": "snippet,contentDetails",
                     "playlistId": upload_playlist,
-                    "maxResults": 20,
+                    "maxResults": 100,
                     "pageToken": next_page,
                     "key": YT_API_KEY
                 }

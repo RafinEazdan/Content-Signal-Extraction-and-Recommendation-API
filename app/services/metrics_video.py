@@ -28,7 +28,7 @@ class video_metrics:
         cursor.execute('''
             SELECT id, video_id 
             FROM videos 
-            WHERE channel_db_id = %s;
+            WHERE channel_db_id = %s ORDER BY published_at DESC;
         ''', (channel_db_id,))
         
         videos = cursor.fetchall()

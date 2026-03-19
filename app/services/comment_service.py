@@ -1,13 +1,12 @@
+import httpx
 from fastapi import HTTPException
-from passlib import exc
+
 from app.core.config import settings
 
 from app.ai.pipeline import analyze_comments
+from app.ai.topic_extraction import extract_topics_from_comments
 
 YT_API_KEY = settings.YT_API_KEY
-
-import httpx
-from fastapi import HTTPException
 
 class CommentService:
     def __init__(self, db):
@@ -126,7 +125,7 @@ class CommentService:
     def _get_comments(self, video_db_id):
             try:
                 cursor = self.db.cursor()
-                cursor.execute("SELECT comment_id, text from comments where video_db_id::integer = %s;",(video_db_id,))
+                cursor.execute("SELECT comment_id, text from comments where video_db_id::integer = %s ORDER BY like_count DESC;",(video_db_id,))
                 rows = cursor.fetchall()
 
                 if not rows:
@@ -157,3 +156,31 @@ class CommentService:
         if not analysis:
             raise HTTPException(status_code=500, detail=f"Error fetching from the AI models")
         return analysis
+
+    async def extract_comment_topics(
+        self,
+        video_db_id: int,
+        provider: str = "huggingface",
+        model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        top_k: int = 30,
+        chunk_size: int = 40,
+        per_chunk_topics: int = 20,
+        max_parallel_requests: int = 4,
+    ):
+        comments = self._get_comments(video_db_id)
+        texts = [comment["text"] for comment in comments]
+
+        result = await extract_topics_from_comments(
+            comments=texts,
+            provider=provider,
+            model=model,
+            top_k=top_k,
+            chunk_size=chunk_size,
+            per_chunk_topics=per_chunk_topics,
+            max_parallel_requests=max_parallel_requests,
+        )
+
+        if not result:
+            raise HTTPException(status_code=500, detail="Error extracting topics from comments")
+
+        return result
