@@ -1,61 +1,72 @@
-# YouTube Content Recommendation - Detailed Project Status
+# Content Signal Extraction and Recommendation API
 
-This repository contains a FastAPI backend that currently implements:
+A FastAPI backend for collecting YouTube channel signals (videos, metrics, comments), analyzing audience sentiment/toxicity, and generating recommendation-ready content title ideas from comments.
 
-- User signup with OTP verification stored in Redis
-- JWT-based login and authenticated profile operations
-- YouTube channel lookup, persistence, and Redis caching
-- Channel video ingestion from YouTube playlist items
-- Video metrics ingestion and daily upsert storage
-- Video comment ingestion and persistence
-- Alembic-driven schema evolution for all major domain tables
+## 1. What This Project Currently Does
 
-The goal of this document is to provide a very detailed description of what has already been built, how each part works, and how components are connected.
+Implemented end-to-end:
 
-## 1. Tech Stack and Runtime
+- OTP-based signup flow with Redis staging
+- JWT login and authenticated profile endpoints
+- Channel discovery by handle with Redis cache and DB persistence
+- Video ingestion from channel upload playlist
+- Daily metric snapshots with upsert semantics
+- Comment ingestion with de-duplication
+- AI comment analysis (sentiment + toxicity)
+- Topic extraction from comments and LLM-generated suggested titles
+- Alembic migration history for schema evolution
 
-### Application and API
-- FastAPI (`fastapi`)
-- Uvicorn (`uvicorn`)
-- Pydantic v2 (`pydantic`, `pydantic-settings`)
+## 2. Tech Stack
 
-### Persistence and Migrations
-- PostgreSQL via psycopg3 (`psycopg`, `psycopg-binary`)
-- SQLAlchemy models for metadata and Alembic autogenerate support
-- Alembic migrations for schema versioning
+### API and Runtime
+
+- FastAPI
+- Uvicorn
+- Pydantic v2 / pydantic-settings
+
+### Database and Migrations
+
+- PostgreSQL via psycopg3
+- SQLAlchemy models (metadata/migrations)
+- Alembic
 
 ### Auth and Security
-- JWT creation/verification (`PyJWT` package imported as `jwt`)
-- Password hashing with Argon2 via Passlib
 
-### Caching and Ephemeral State
+- JWT via PyJWT
+- Password hashing with Argon2 (passlib)
+
+### Caching / Ephemeral Storage
+
 - Redis async client (`redis.asyncio`)
-- Redis used for OTP registration staging and channel-level cache
 
-### External APIs
-- YouTube Data API v3:
-	- `search` endpoint for finding channels by handle/query
-	- `channels` endpoint for channel metadata
-	- `playlistItems` endpoint for recent videos from upload playlist
-	- `videos` endpoint for view/like/comment counts
-	- `commentThreads` endpoint for top-level comments
+### AI / NLP
 
-## 2. Repository Structure (Current)
+- Hugging Face Inference API (sentiment + toxicity)
+- VADER fallback for sentiment
+- Keyword fallback for toxicity
+- Local Ollama (`llama3.2`) for title generation
 
-- `app/main.py`: FastAPI app instance and router registration
-- `app/api/v1/`: HTTP route modules (auth/users/channel/video/metric/comment)
-- `app/services/`: business logic and third-party API orchestration
-- `app/models/`: SQLAlchemy ORM table definitions
-- `app/schemas/`: Pydantic request/response contracts
-- `app/database/`: DB base metadata and connection dependency
-- `app/redis/`: Redis client wrapper and dependency provider
-- `app/core/`: settings loading and password utilities
-- `alembic/`: migration environment and version scripts
-- `requirements.txt`: pinned dependencies
+### External API
 
-## 3. Application Entry and Router Wiring
+- YouTube Data API v3 (`search`, `channels`, `playlistItems`, `videos`, `commentThreads`)
 
-The app is created in `app/main.py` and includes these routers:
+## 3. Project Structure
+
+- `app/main.py`: FastAPI app and router registration
+- `app/api/v1/`: API route modules
+- `app/services/`: core business logic for auth/signup/channel/video/metrics/comments
+- `app/ai/`: AI pipeline and topic/title generation logic
+- `app/models/`: SQLAlchemy model definitions
+- `app/schemas/`: request/response Pydantic contracts
+- `app/database/`: DB base/session dependency
+- `app/redis/`: Redis client and dependency wiring
+- `app/core/`: settings and security utilities
+- `alembic/`: migration environment and revisions
+- `requirements.txt`: dependencies
+
+## 4. App Entry and Router Wiring
+
+Current routers included in `app/main.py`:
 
 - `users.router`
 - `auth.router`
@@ -63,14 +74,16 @@ The app is created in `app/main.py` and includes these routers:
 - `video.router`
 - `metric.router`
 - `comment.router`
+- `comment_analysis.router`
+- `video_recommendation.router`
 
-There is also a root endpoint:
+Root endpoint:
 
-- `GET /` -> returns `{"Hello": "World!"}`
+- `GET /` -> `{ "Hello": "World!" }`
 
-## 4. Environment Variables and Config
+## 5. Environment Variables
 
-The settings class in `app/core/config.py` expects these required values from `.env`:
+Required in `.env`:
 
 - `YT_API_KEY`
 - `DATABASE_URL`
@@ -79,557 +92,324 @@ The settings class in `app/core/config.py` expects these required values from `.
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `ALGORITHM`
 - `REDIS_URL`
+- `HF_API_KEY`
 
-Notes:
+Optional model overrides:
 
-- Missing required keys will fail settings initialization.
-- JWT expiration is configured by `ACCESS_TOKEN_EXPIRE_MINUTES`.
-- YouTube integrations depend entirely on `YT_API_KEY` being valid.
+- `HF_SENTIMENT_MODEL` (default: `distilbert/distilbert-base-uncased-finetuned-sst-2-english`)
+- `HF_TOXICITY_MODEL` (default: `martin-ha/toxic-comment-model`)
 
-## 5. Database and Redis Connectivity
+## 6. Connectivity and State
 
-### PostgreSQL dependency (`app/database/session.py`)
+### PostgreSQL (`app/database/session.py`)
 
-- `get_db()` continuously retries connection in a `while True` loop until success.
-- Returns psycopg connection objects with `dict_row` row factory.
-- Each request closes the connection in `finally`.
+- Uses psycopg with `dict_row` row factory
+- Request dependency yields a DB connection and closes it in `finally`
+- Connection logic retries forever in a loop with 2-second sleep
 
-### Redis dependency (`app/redis/redis_client.py`, `app/redis/dependencies.py`)
+### Redis (`app/redis/redis_client.py`)
 
-- A singleton `RedisClient` is created.
-- Async helper methods:
-	- `get(key)`
-	- `set(key, value, expire=None)`
-	- `delete(key)`
+- Singleton Redis client instance
+- Methods: `get`, `set`, `delete`
 
-Current Redis key usage:
+Current Redis keys:
 
-- `reg:<email>` for staged signup + OTP payload
-- `channel:<channel_handle>` for channel cache (7 days)
+- `reg:<email>`: staged signup payload + OTP (TTL 500s)
+- `channel:<channel_handle>`: cached channel data (TTL 604800s = 7 days)
 
-## 6. Authentication and Authorization
+## 7. Authentication Flow
 
-### Password handling (`app/core/security.py`)
+### Password utilities
 
-- Hashing: Argon2 via `CryptContext`
-- Verification: `verify_pass(given_pass, hashed_pass)`
+- Hash: Argon2 (`app/core/security.py`)
+- Verify: passlib verify
 
-### JWT flow (`app/services/oauth.py`)
+### JWT (`app/services/oauth.py`)
 
-- `create_token(data)`:
-	- Copies payload
-	- Adds `exp` claim using configured expiry minutes
-	- Signs token using `SECRET_KEY` and `ALGORITHM`
+- `create_token(data)`: adds expiry and signs token
+- `verify_token(token, credential_exception)`: decodes and validates token
+- `get_current_user`: resolves bearer token and validates user in DB
 
-- `verify_token(token, credential_exception)`:
-	- Decodes token
-	- Extracts `id`
-	- Raises provided HTTP exception on invalid token or missing id
+## 8. API Endpoints (Current)
 
-- `get_current_user(...)` dependency:
-	- Reads bearer token via `OAuth2PasswordBearer(tokenUrl="login")`
-	- Verifies token
-	- Confirms user id exists in `users` table
-	- Returns DB user dict with `id`
-
-## 7. Endpoint Reference (All Current Routes)
-
-This section lists all current endpoints with behavior and contracts as implemented.
-
-### 7.1 Auth Endpoints
+### Auth
 
 #### `POST /login`
-Tag: `Login`
 
-Purpose:
+- Auth: none
+- Input: `OAuth2PasswordRequestForm`
+  - `username` is treated as email
+- Response: `Token`
+  - `token`
+  - `token_type` (`bearer`)
+- Errors: `403` invalid credentials
 
-- Authenticate by email + password and issue JWT token.
-
-Input:
-
-- `OAuth2PasswordRequestForm`
-	- `username` field is treated as email
-	- `password` is plaintext password
-
-Process:
-
-- Query user by email from `users` table
-- Verify password hash
-- Build JWT with user id
-
-Response (`Token` schema):
-
-- `token`: JWT string
-- `token_type`: `bearer`
-
-Failure cases:
-
-- `403 Invalid Credentials` for unknown email or wrong password
-
-### 7.2 User Endpoints
-
-Base prefix: `/users`
-Tag: `Users`
+### Users (`/users`)
 
 #### `POST /users/signup/send-otp`
 
-Purpose:
-
-- Start registration process and place signup payload + OTP in Redis.
-
-Input (`UserCreate`):
-
-- `username: str`
-- `email: EmailStr`
-- `password: str`
-- `profile_pic: str | None`
-
-Process:
-
-- Ensures email is not already registered in DB
-- Hashes password
-- Generates 6-digit OTP
-- Stores staged payload in Redis key `reg:<email>` with expiry `500` seconds
-
-Response:
-
-- Status `200`
-- Message indicating OTP sent
-
-Failure cases:
-
-- `409 Email already registered`
-- `500` on DB or internal errors
+- Auth: none
+- Input: `UserCreate`
+- Behavior:
+  - checks existing email in DB
+  - hashes password
+  - generates OTP and stores staged payload in Redis
+- Response: message string
+- Errors: `409`, `500`
 
 #### `POST /users/signup/verify-otp`
 
-Purpose:
-
-- Verify OTP and complete user creation in PostgreSQL.
-
-Input (`OTPVerifyRequest`):
-
-- `email: EmailStr`
-- `otp: str`
-
-Process:
-
-- Reads Redis `reg:<email>` payload
-- Verifies provided OTP
-- Inserts user into `users` table
-- Deletes staged redis key after successful DB commit
-
-Response (`UserResponse`):
-
-- `username`
-- `email`
-- `id`
-- `created_at`
-- `profile_pic`
-
-Failure cases:
-
-- `400` on missing/expired registration or invalid OTP
-- `500` on insert/transaction failure
+- Auth: none
+- Input: `OTPVerifyRequest`
+- Behavior:
+  - verifies OTP from Redis
+  - inserts user into DB
+  - removes Redis staged key
+- Response: `UserResponse`
+- Errors: `400`, `500`
 
 #### `GET /users/profile`
 
-Auth required: yes (`get_current_user`)
-
-Purpose:
-
-- Return current authenticated user profile.
-
-Response (`UserResponse`):
-
-- Full current user row mapped to schema
-
-Failure cases:
-
-- `401` if token missing/invalid
-- `403` if user cannot be loaded
+- Auth: required
+- Response: `UserResponse`
+- Errors: `401`, `403`
 
 #### `DELETE /users/profile/delete`
 
-Auth required: yes (`get_current_user`)
+- Auth: required
+- Response: `204 No Content`
+- Errors: `403`
 
-Purpose:
-
-- Delete current authenticated user account.
-
-Process:
-
-- Executes delete by current user id
-- Returns `204` no content on success
-
-Failure cases:
-
-- `403` if no row was deleted
-
-### 7.3 Channel Endpoints
-
-Base prefix: `/channels`
-Tag: `Channels`
+### Channels (`/channels`)
 
 #### `POST /channels/`
 
-Auth required: yes
+- Auth: required
+- Input: `ChannelRequest`
+- Resolution order:
+  1. Redis cache
+  2. DB lookup
+  3. YouTube API fetch + DB insert + Redis set
+- Response: `ChannelResponse`
 
-Purpose:
-
-- Fetch and persist channel metadata from cache/DB/API using channel handle.
-
-Input (`ChannelRequest`):
-
-- `channel_handle: str`
-
-Resolution order in `fetch_create_channel`:
-
-1. Redis cache: `channel:<channel_handle>`
-2. PostgreSQL `channels` table
-3. YouTube API fetch then DB insert then cache set
-
-Response (`ChannelResponse`):
-
-- `channel_id`
-- `channel_title`
-- `channel_handle`
-- `subscriber_count`
-- `upload_playlist`
-
-Implementation details:
-
-- Cache expiry is `604800` seconds (7 days)
-- Inserted platform is fixed as `youtube`
-
-### 7.4 Video Endpoints
-
-Base prefix: `/videos`
-Tag: `Videos`
+### Videos (`/videos`)
 
 #### `POST /videos/store`
 
-Auth required: yes
+- Auth: required
+- Input: `VideoRequest`
+- Behavior:
+  - finds channel upload playlist
+  - fetches playlist items
+  - inserts with `ON CONFLICT (video_id) DO NOTHING`
+- Response: `VideoResponse`
 
-Purpose:
+Important behavior:
 
-- Pull latest videos from channel upload playlist and store new rows.
+- Currently fetches one playlist page (`maxResults=20`); full pagination is not enabled.
 
-Input (`VideoRequest`):
-
-- `channel_handle: str`
-
-Process summary:
-
-- Finds channel in DB by handle (`id`, `upload_playlist`)
-- Calls YouTube `playlistItems` API
-- Maps items into internal video objects
-- Inserts into `videos` with `ON CONFLICT (video_id) DO NOTHING`
-
-Response (`VideoResponse`):
-
-- `newly_added_video_count: int`
-
-Failure cases:
-
-- `404` if channel does not exist in DB
-
-Important current behavior:
-
-- Current implementation fetches only one page of playlist results (`maxResults=20`).
-- Pagination loop is present but not fully enabled for multiple pages.
-
-### 7.5 Metrics Endpoints
-
-Base prefix: `/metrics`
-Tag: `metrics`
+### Metrics (`/metrics`)
 
 #### `POST /metrics/`
 
-Auth required: yes
+- Auth: required
+- Input: `RequestMetrics` (`channel_db_id`)
+- Behavior:
+  - validates channel
+  - loads stored videos
+  - batches YouTube API calls in chunks of 50 IDs
+  - computes engagement rate:
 
-Purpose:
+$$
+\text{engagement\_rate} = \frac{likes + comments\_count}{views} \times 100
+$$
 
-- Fetch per-video statistics for all videos in a channel and upsert daily metrics.
+  - upserts by `(video_db_id, date)`
+- Response: `ResponseMetrics`
 
-Input (`RequestMetrics`):
+### Comments
 
-- `channel_db_id: int`
+#### `POST /fetch_comments`
 
-Process summary in `video_metrics.get_metrics`:
+- Auth: not required (current behavior)
+- Input: `RequestComment` (`video_db_id`)
+- Behavior:
+  - resolves video ID from DB
+  - pages through `commentThreads`
+  - inserts with `ON CONFLICT (comment_id) DO NOTHING`
+- Response: `ResponseComment`
 
-- Validate channel exists
-- Select all videos for that channel
-- Batch video ids in chunks of 50
-- Call YouTube `videos` API (`part=statistics`)
-- Compute engagement rate:
+### Comment Analysis
 
-	$$\text{engagement\_rate} = \frac{likes + comments\_count}{views} \times 100$$
+#### `POST /comment_analysis`
 
-- Upsert into `video_metrics` by unique pair `(video_db_id, date)`
+- Auth: not required (current behavior)
+- Input: `RequestCommentAnalysis` (`video_db_id`)
+- Behavior:
+  - fetches stored comments from DB
+  - runs async sentiment + toxicity pipeline
+- Response:
+  - list of `{ comment_id, sentiment, sentiment_score, toxicity, toxicity_score }`
 
-Response (`ResponseMetrics`):
+### Video Recommendation
 
-- `success: bool`
-- `message: str`
-- `metrics_count: int`
-- `data: List[VideoMetricResponse]`
+#### `POST /video_recommendation/comments`
 
-`VideoMetricResponse` contains:
+- Auth: not required (current behavior)
+- Input: `RequestTopicsFromComments` (`video_db_id`, `refresh`)
+- Behavior:
+  - if `refresh=false`, returns cached predictions from DB when available
+  - else extracts topics from comments and asks Ollama to generate titles
+  - stores generated titles in `predicted_titles`
+- Response: `ResponseTopicsFromComments` (`titles`)
 
-- `video_id`
+## 9. Service Layer Notes
+
+### Signup and OTP
+
+- OTP is 6 digits
+- OTP staging data stored as JSON in Redis
+- OTP is printed to stdout in current implementation (development visibility)
+
+### Channel Fetch (`fetch_create_channel`)
+
+- Caches by `channel:<handle>` for 7 days
+- Writes platform as `youtube`
+
+### Video Ingestion (`video_service`)
+
+- Pulls upload playlist items
+- Stores only new videos using conflict ignore
+- Has `get_stored_videos` helper
+
+### Metrics (`metrics_video`)
+
+- Fetches and stores views/likes/comments_count
+- Computes and rounds engagement rates for response
+
+### Comment Service
+
+- Fetch/store comments
+- Analyze comments through AI pipeline
+- Generate title recommendations from extracted topics
+
+## 10. AI Pipeline Details
+
+### Sentiment (`app/ai/sentiment.py`)
+
+- Uses HF Inference API async calls
+- Attempts modern router endpoint then legacy endpoint
+- Falls back to VADER if remote call fails
+
+### Toxicity (`app/ai/toxicity.py`)
+
+- Uses HF Inference API async calls
+- Multiple endpoint/model fallback strategy
+- Falls back to keyword heuristic if remote call fails
+
+### Topic Extraction + Title Generation (`app/ai/comment_topic_extractor.py`)
+
+- Topic candidates from regex intent patterns + n-grams
+- Ranking uses frequency, likes, topic length, and intent score
+- Title generation via Ollama chat endpoint (`http://localhost:11434/api/chat`) with model `llama3.2`
+
+## 11. Data Models (Current)
+
+### `users`
+
+- `id` (PK)
+- `email` (unique)
+- `username`
+- `hashed_password`
+- `created_at`
+- `profile_pic` (nullable)
+
+### `channels`
+
+- `id` (PK)
+- `channel_id` (unique)
+- `platform`
+- `channel_title`
+- `channel_handle` (unique)
+- `subscriber_count` (nullable)
+- `upload_playlist` (nullable)
+
+### `videos`
+
+- `id` (PK)
+- `video_id` (unique)
+- `video_title`
+- `video_description` (nullable)
+- `published_at`
+- `channel_id_url`
+- `channel_db_id` (FK -> `channels.id`, cascade delete)
+
+### `video_metrics`
+
+- `id` (PK)
+- `video_db_id` (FK -> `videos.id`, cascade delete)
 - `date`
 - `views`
 - `likes`
 - `comments_count`
 - `engagement_rate`
-
-Failure cases:
-
-- `404` if channel id does not exist
-- `500` on unexpected errors
-
-### 7.6 Comment Endpoints
-
-No explicit router prefix configured in this module.
-
-#### `POST /fetch_comments`
-
-Auth required: no (current implementation)
-
-Purpose:
-
-- Fetch top-level YouTube comments for a stored video and insert into DB.
-
-Input (`RequestComment`):
-
-- `video_db_id: int`
-
-Process summary in `CommentService`:
-
-- Resolve `video_id` from DB using `video_db_id`
-- Iterate through YouTube `commentThreads` pages (`maxResults=100`)
-- Build normalized comment objects
-- Bulk insert with `executemany`
-- `ON CONFLICT (comment_id) DO NOTHING`
-
-Response (`ResponseComment`):
-
-- `success: bool`
-- `message: str`
-- `comments: list`
-
-Each comment item includes:
-
-- `comment_id`
-- `video_db_id`
-- `author_name`
-- `text`
-- `published_at`
-
-Failure cases:
-
-- `404` if video id is not found
-- `400` for YouTube API non-200 responses
-- `500` for uncaught internal errors
-
-## 8. Service Layer: Detailed Behavior
-
-### `app/services/signup_service.py`
-
-- `check_existing_user(email)`:
-	- SQL check for existing user id
-	- Raises `409` if found
-
-- `send_otp(email, password, username, profilepic)`:
-	- Hashes password
-	- Delegates OTP generation/storage to `OTPService`
-
-- `verify_user(email, otp)`:
-	- Delegates OTP validation to `OTPService`
-
-- `signup_user(email)`:
-	- Loads staged registration JSON from Redis
-	- Inserts user row in DB
-	- Commits transaction and deletes Redis key
-	- Returns profile-like dict
-
-### `app/services/otp_service.py`
-
-- Generates 6-digit OTP with `secrets.randbelow`
-- Stores full staged registration payload under `reg:<email>`
-- TTL currently set to `500` seconds
-- Verifies OTP against stored value
-
-Note:
-
-- OTP is printed in server logs in current implementation (development behavior).
-
-### `app/services/api_get_channel.py`
-
-- Calls YouTube Search API to resolve channel id by query text
-- Calls YouTube Channels API for details
-- Extracts:
-	- `channel_id`
-	- `channel_title`
-	- `subscriber_count`
-	- `upload_playlist`
-
-### `app/services/fetch_create_channel.py`
-
-- Primary channel resolver and persistence entry point:
-	- Check Redis cache first
-	- Check DB second
-	- Fetch from API if not found
-- Writes successful channel records into DB and Redis
-
-### `app/services/video_service.py`
-
-- `_get_channel_db_id(channel_handle)`:
-	- Loads channel db id + upload playlist by handle
-
-- `get_video_list(channel_handle)`:
-	- Fetches playlist items from YouTube
-	- Transforms items into internal list shape
-
-- `store_videos(channel_handle)`:
-	- Gets mapped video list
-	- Inserts into `videos` table with conflict ignore
-	- Returns inserted count only
-
-- `get_stored_videos(channel_db_id)`:
-	- Utility method for reading persisted videos by channel
-
-### `app/services/metrics_video.py`
-
-- `_channel_exists(channel_db_id)` validation before processing
-- `_fetch_youtube_metrics(video_ids)` uses YouTube `videos` statistics
-- `_store_metrics(metrics_data, video_db_ids)` does daily upsert
-- `_format_metrics_response(metrics_data)` rounds engagement rates
-
-### `app/services/comment_service.py`
-
-- `_get_video_id(video_db_id)` resolves YouTube video id from local DB
-- `fetch_and_store_comment(video_db_id)`:
-	- Fetches paginated comments
-	- Assembles normalized list
-	- Delegates DB insert
-- `_store_comments(comments)`:
-	- Bulk insert with conflict handling
-
-## 9. Data Models (Current Table Definitions)
-
-### `users`
-- `id` (PK)
-- `email` (unique, required)
-- `username` (required)
-- `hashed_password` (required)
-- `created_at` (default `now()`)
-- `profile_pic` (nullable)
-
-### `channels`
-- `id` (PK)
-- `channel_id` (string identifier from YouTube)
-- `platform` (nullable)
-- `channel_title` (required)
-- `channel_handle` (required)
-- `subscriber_count` (nullable)
-- `upload_playlist` (nullable)
-
-### `videos`
-- `id` (PK)
-- `video_id` (unique, required)
-- `video_title` (required)
-- `video_description` (nullable)
-- `published_at` (stored as string)
-- `channel_id_url` (required)
-- `channel_db_id` (FK -> `channels.id`, cascade delete)
-
-### `video_metrics`
-- `id` (PK)
-- `video_db_id` (FK -> `videos.id`, cascade delete)
-- `date` (required)
-- `views` (required)
-- `likes` (required)
-- `comments_count` (required)
-- `engagement_rate` (required)
-- Unique constraint: `(video_db_id, date)`
+- Unique: `(video_db_id, date)`
 
 ### `comments`
+
 - `id` (PK)
 - `comment_id` (unique)
-- `video_db_id` (currently stored column type differs between migration and ORM; see notes below)
+- `video_db_id` (FK -> `videos.id`, cascade delete)
 - `published_at`
 - `author_name`
 - `like_count`
 - `text`
 
-## 10. Pydantic Schemas (API Contracts)
+### `predicted_titles`
 
-### User schemas (`app/schemas/users.py`)
-- `UserCreate`
-- `UserResponse`
-- `OTPVerifyRequest`
-- `Token`
-- `TokenData`
+- `id` (PK)
+- `video_db_id` (FK -> `videos.id`, cascade delete)
+- `predicted_title`
+- `score`
+- `created_at`
 
-### Channel schemas (`app/schemas/channels.py`)
-- `ChannelRequest`
-- `ChannelResponse`
+## 12. Schemas (Current)
 
-### Video schemas (`app/schemas/videos.py`)
-- `VideoRequest`
-- `VideoBase`
-- `VideoResponse`
+- `app/schemas/users.py`: `UserCreate`, `UserResponse`, `OTPVerifyRequest`, `Token`, `TokenData`
+- `app/schemas/channels.py`: `ChannelRequest`, `ChannelResponse`
+- `app/schemas/videos.py`: `VideoRequest`, `VideoResponse`
+- `app/schemas/comments.py`: `RequestComment`, `ResponseCommentBase`, `ResponseComment`
+- `app/schemas/metrics.py`: `RequestMetrics`, `VideoMetricResponse`, `ResponseMetrics`
+- `app/schemas/comment_analysis.py`: `RequestCommentAnalysis`
+- `app/schemas/video_recommendation.py`: `RequestTopicsFromComments`, `ResponseTopicsFromComments`
 
-### Metrics schemas (`app/schemas/metrics.py`)
-- `RequestMetrics`
-- `VideoMetricResponse`
-- `ResponseMetrics`
+## 13. Alembic Migration Chain
 
-### Comment schemas (`app/schemas/comments.py`)
-- `RequestComment`
-- `ResponseCommentBase`
-- `ResponseComment`
+Current linear chain by `down_revision`:
 
-## 11. Alembic Migration History (Detailed)
+1. `e2c66c670f65_initial_schema.py`
+2. `61b3dbb7a103_create_channels_table.py`
+3. `8d9869a4e289_update_channels_table.py`
+4. `be030eeebf1c_changing_a_column_in_channels_table.py`
+5. `9e5461a4bb91_adding_channel_handle_in_channels_table.py`
+6. `590886e3adf7_changing_the_type_of_channel_id.py`
+7. `06c35223c7b7_changing_the_type_of_channel_id.py`
+8. `3f9fba052403_removing_user_id_from_channel_table.py`
+9. `84a9cf7786db_add_video_table.py`
+10. `0028a87bbf03_add_unique_video_ids.py`
+11. `aedf15b9381b_adding_video_metrics_table.py`
+12. `a99f95b335ce_fix_video_metrics_unique_constraint.py`
+13. `6e0fc348cc91_add_comments_table.py`
+14. `d0fcf7ec10b5_adding_predicted_titles_table_and_.py`
+15. `035c5e921f7f_video_db_id_as_foreign_keys.py`
 
-The migration chain currently progresses as follows:
+Note:
 
-1. `e2c66c670f65` - initial `users` table
-2. `61b3dbb7a103` - create `channels` table with `user_id` FK and integer `channel_id`
-3. `8d9869a4e289` - add `total_no_of_videos`, relax nullability on `platform` and `subscriber_count`
-4. `be030eeebf1c` - replace `total_no_of_videos` with `upload_playlist`
-5. `9e5461a4bb91` - add `channel_handle`
-6. `590886e3adf7` - alter `channel_id` from integer to string and add unique constraint
-7. `06c35223c7b7` - remove unique constraint on `channels.channel_id`
-8. `3f9fba052403` - remove `channels.user_id` and its foreign key
-9. `84a9cf7786db` - create `videos` table with FK to `channels`
-10. `0028a87bbf03` - add unique constraint on `videos.video_id`
-11. `aedf15b9381b` - create `video_metrics` table (initially unique on `video_db_id`)
-12. `a99f95b335ce` - replace unique on `video_db_id` with composite unique on `(video_db_id, date)`
-13. `6e0fc348cc91` - create `comments` table
+- Comments `video_db_id` started as `String` in comments migration and was later cast to `INTEGER` in migration updates.
 
-Migration infrastructure details:
+## 14. Setup and Run
 
-- `alembic/env.py` imports all model modules for metadata discovery.
-- Runtime DB URL is injected from environment into Alembic config.
-
-## 12. Current Functional Flow (End-to-End)
-
-Typical working flow today:
-
-1. Call signup send OTP endpoint.
-2. Verify OTP and create user.
-3. Login to obtain bearer token.
-4. Add/fetch channel by handle (stored and cached).
-5. Store videos for that channel.
-6. Fetch metrics for that channel's local DB id.
-7. Fetch comments for any stored video DB id.
-
-## 13. Setup and Run Instructions
-
-### 13.1 Install dependencies
+### 1. Install dependencies
 
 ```bash
 python -m venv venv
@@ -637,49 +417,49 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 13.2 Configure environment
+### 2. Configure environment
 
-Create `.env` with all required keys listed in section 4.
+Create `.env` with required keys from section 5.
 
-### 13.3 Run migrations
+### 3. Run migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### 13.4 Start API server
+### 4. Start server
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-### 13.5 Open API docs
+### 5. Open docs
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-## 14. Known Gaps and Implementation Notes
+## 15. Known Gaps / Current Caveats
 
-These are important, currently visible implementation details that may impact production usage:
+- Comment endpoints (`/fetch_comments`, `/comment_analysis`, `/video_recommendation/comments`) do not currently require authentication.
+- OTP value is printed in logs (development behavior).
+- DB connection dependency retries forever if DB is unavailable.
+- Video ingestion currently fetches only one playlist page (20 videos).
+- Mixed HTTP clients are used across modules (`requests`, `httpx`, `aiohttp`).
+- Title generation requires local Ollama availability.
 
-- Comment route currently has no auth dependency, unlike other data-fetching routes.
-- OTP is currently printed to stdout for development visibility.
-- `video_db_id` type in comments migration is `String`, while ORM model uses `Integer`.
-- In JWT decode, algorithm argument is passed in a compact form and should be reviewed for strict PyJWT compatibility in all environments.
-- Video ingestion currently fetches only first playlist page (up to 20 videos per call).
-- Mixed sync/async HTTP usage exists (`requests` in one service, `httpx` elsewhere).
+## 16. Status Summary
 
-## 15. What Is Completed So Far (Summary)
+Implemented and working in repository:
 
-Completed and working in codebase:
+- API scaffolding and router composition
+- OTP signup + JWT login flows
+- Channel fetch/persist/cache pipeline
+- Video ingestion pipeline (first page)
+- Daily metric ingestion/upsert pipeline
+- Comment ingestion/de-duplication pipeline
+- AI comment analysis (sentiment + toxicity)
+- Topic extraction + generated recommendation titles
+- Alembic migration-backed schema history
 
-- Core API scaffold and router composition
-- Credential login with JWT issuance
-- OTP-backed signup flow with Redis staging
-- Authenticated profile read/delete
-- Channel fetch + persist + cache pipeline
-- Video fetch + deduplicated storage pipeline
-- Metrics fetch + daily upsert pipeline
-- Comment fetch + deduplicated storage pipeline
-- Full migration chain from initial users table to comments table
+---
 
-This README is made with GPT-5.3-Codex to document the current state of the codebase in great detail, including all implemented features, data models, API contracts, and known implementation notes.
+This README was fully refreshed against the current repository implementation and renamed to: **Content Signal Extraction and Recommendation API**.
