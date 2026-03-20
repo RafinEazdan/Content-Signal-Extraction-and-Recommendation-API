@@ -187,22 +187,30 @@ class CommentService:
         return analysis
     
 
-    def generate_titles(self, video_db_id):
+    def generate_titles(self, video_db_id, refresh=False):
         try:
-
+            if not refresh:
+                cursor = self.db.cursor()
+                cursor.execute("SELECT predicted_title FROM predicted_titles WHERE video_db_id = %s ORDER BY score ASC;", (video_db_id,))
+                rows = cursor.fetchall()
+                if rows:
+                    return [row["predicted_title"] for row in rows]
+            
             extractor = CommentTopicExtractor()
             comments = self._get_comments(video_db_id)
             topics = extractor.extract_topics(comments)
             titles = extractor.generate_titles(topics)
+            self._store_generated_titles(video_db_id, titles)
+
+            return titles
 
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error occurred while generating titles: {str(e)}")
 
-        return titles
     
-    def store_generated_titles(self, video_db_id, titles):
+    def _store_generated_titles(self, video_db_id, titles):
         try:
             cursor = self.db.cursor()
             for idx, title in enumerate(titles):
@@ -211,7 +219,7 @@ class CommentService:
                     INSERT INTO predicted_titles (video_db_id, predicted_title, score)
                     VALUES (%s, %s, %s)
                     """,
-                    (video_db_id, title, idx)
+                    (video_db_id, title, idx+1)
                 )
 
             self.db.commit()

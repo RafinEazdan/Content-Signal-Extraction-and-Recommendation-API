@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
-
 class RequestTopicsFromComments(BaseModel):
     video_db_id: int
+    refresh: bool = False
 
 
 class ResponseTopicsFromComments(BaseModel):

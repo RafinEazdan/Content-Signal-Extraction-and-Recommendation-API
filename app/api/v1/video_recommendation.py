@@ -15,7 +15,7 @@ router = APIRouter(
 def get_topics_from_comments(request: RequestTopicsFromComments, db: Connection = Depends(get_db)):
     try:
         comment_service = CommentService(db)
-        titles = comment_service.generate_titles(request.video_db_id)
+        titles = comment_service.generate_titles(request.video_db_id, request.refresh)
         # print(f"length of titles: {len(titles)}")
 
     except HTTPException:
