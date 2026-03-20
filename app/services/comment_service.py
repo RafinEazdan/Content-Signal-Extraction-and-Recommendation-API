@@ -201,3 +201,19 @@ class CommentService:
             raise HTTPException(status_code=500, detail=f"Error occurred while generating titles: {str(e)}")
 
         return titles
+    
+    def store_generated_titles(self, video_db_id, titles):
+        try:
+            cursor = self.db.cursor()
+            for idx, title in enumerate(titles):
+                cursor.execute(
+                    """
+                    INSERT INTO predicted_titles (video_db_id, predicted_title, score)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (video_db_id, title, idx)
+                )
+
+            self.db.commit()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error occurred while storing generated titles: {str(e)}")

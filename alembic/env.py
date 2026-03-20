@@ -15,6 +15,7 @@ import app.models.user
 import app.models.video
 import app.models.video_metrics
 import app.models.comments
+import app.models.predicted_titles
 
 
 load_dotenv()
