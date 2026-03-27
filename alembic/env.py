@@ -16,8 +16,8 @@ import app.models.video
 import app.models.video_metrics
 import app.models.comments
 import app.models.predicted_titles
-import app.models.sources
-import app.models.topics
+# import app.models.sources
+# import app.models.topics
 
 
 load_dotenv()
