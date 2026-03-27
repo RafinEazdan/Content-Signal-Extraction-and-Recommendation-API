@@ -92,12 +92,7 @@ class CommentTopicExtractor:
 
         candidates = self._ngrams(tokens, 2) + self._ngrams(tokens, 3)
 
-        # FIX 1: filter weak/generic phrases
         return [p for p in candidates if p not in self.WEAK_PHRASES]
-
-    # ------------------------------------------------------------------ #
-    #  Post-merge normalization                                            #
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     def _merge_topics(
@@ -105,12 +100,7 @@ class CommentTopicExtractor:
         topic_likes: defaultdict,
         topic_intent_count: defaultdict,
     ) -> tuple[Counter, defaultdict, defaultdict]:
-        """
-        FIX 5 — Post-merge normalization.
-        Collapse topics where one is a substring of another into the longer one.
-        Example: "python decorators" and "python decorators depth" → keep longer,
-        add counts/likes of the shorter into it.
-        """
+
         topics = sorted(topic_counts.keys(), key=len, reverse=True)  # longest first
         merged: dict[str, str] = {}   # short_topic → canonical_topic
 
@@ -126,17 +116,11 @@ class CommentTopicExtractor:
 
         return topic_counts, topic_likes, topic_intent_count
 
-    # ------------------------------------------------------------------ #
-    #  Scoring                                                             #
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     def _score(topic: str, count: int, total_likes: int, intent_count: int) -> float:
         """
         score = count*0.5 + log(likes+1)*0.2 + length_bonus*0.1 + intent_bonus*0.2
-
-        FIX 4: length_bonus is now word-count based (not char-count).
-        FIX 1: intent_bonus uses intent_count (not a bool flag).
         """
         num_words    = len(topic.split())
         length_bonus = min(num_words / 3, 1.0)            # FIX 4
@@ -148,22 +132,8 @@ class CommentTopicExtractor:
             + intent_bonus * 0.2
         )
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                          #
-    # ------------------------------------------------------------------ #
-
     def extract_topics(self, comments: list[dict]) -> list[dict]:
-        """
-        Parameters
-        ----------
-        comments : list of dicts with keys:
-            - "text"  (str)  : comment text
-            - "likes" (int)  : number of likes on that comment
 
-        Returns
-        -------
-        Ranked list of dicts: {topic, score, count, likes, intent_count}
-        """
         topic_counts       = Counter()
         topic_likes        = defaultdict(int)
         topic_intent_count = defaultdict(int)   # FIX 1: count not bool
@@ -172,11 +142,9 @@ class CommentTopicExtractor:
             raw_text = self._clean(entry.get("text", ""))
             likes    = int(entry.get("likes", 0))
 
-            # FIX 2: use a seen_topics set so the same topic from regex AND
-            # n-gram within one comment is only counted once per comment.
             seen_topics: set[str] = set()
 
-            # --- regex (intent-based) topics ---
+            # --- regex topics ---
             for topic in self._extract_regex_topics(raw_text):
                 if topic not in seen_topics:
                     topic_counts[topic]        += 1
@@ -191,7 +159,6 @@ class CommentTopicExtractor:
                     topic_likes[topic]   += likes
                     seen_topics.add(topic)
 
-        # FIX 5: post-merge normalization before scoring
         topic_counts, topic_likes, topic_intent_count = self._merge_topics(
             topic_counts, topic_likes, topic_intent_count
         )
@@ -220,7 +187,6 @@ class CommentTopicExtractor:
         return top
 
     def generate_titles(self, topics: list[dict]) -> list[str]:
-        """Send top topics to Ollama (llama3.2) and get back video title suggestions."""
         topic_lines = "\n".join(
             f"- {t['topic']} (score={t['score']}, count={t['count']}, intent_count={t['intent_count']})"
             for t in topics
@@ -263,38 +229,3 @@ class CommentTopicExtractor:
         topics = self.extract_topics(comments)
         titles = self.generate_titles(topics)
         return {"topics": topics, "titles": titles}
-
-
-# ------------------------------------------------------------------ #
-#  Quick demo                                                          #
-# ------------------------------------------------------------------ #
-
-if __name__ == "__main__":
-    sample_comments = [
-        {"text": "Can you make a video on machine learning for beginners?", "likes": 120},
-        {"text": "Please do a tutorial on Python decorators!", "likes": 85},
-        {"text": "Would you cover system design interviews?", "likes": 200},
-        {"text": "How to build a REST API with FastAPI?", "likes": 95},
-        {"text": "machine learning for beginners is what I need", "likes": 40},
-        {"text": "I loved this video! system design interviews would be great next", "likes": 30},
-        {"text": "Please explain transformer architecture", "likes": 150},
-        {"text": "Create a video about Docker and Kubernetes", "likes": 110},
-        {"text": "How do I learn data structures and algorithms?", "likes": 75},
-        {"text": "Can you cover Python decorators in depth?", "likes": 60},
-        {"text": "transformer architecture explained please!", "likes": 90},
-        {"text": "docker and kubernetes setup tutorial needed", "likes": 55},
-        # Multi-topic comment — tests FIX 3
-        {"text": "you make nice videos", "likes": 70},
-    ]
-
-    extractor = CommentTopicExtractor(top_n=10)
-    results = extractor.run(sample_comments)
-
-    print("\n=== TOP TOPICS ===")
-    for i, t in enumerate(results["topics"], 1):
-        intent_flag = f"[intent×{t['intent_count']}]" if t["intent_count"] else "[ngram]  "
-        print(f"{i:>2}. {intent_flag} {t['topic']:<45} score={t['score']:.3f}  count={t['count']}  likes={t['likes']}")
-
-    print("\n=== GENERATED VIDEO TITLES ===")
-    for i, title in enumerate(results["titles"], 1):
-        print(f"{i:>2}. {title}")
