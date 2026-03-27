@@ -44,7 +44,7 @@ Implemented end-to-end:
 - Hugging Face Inference API (sentiment + toxicity)
 - VADER fallback for sentiment
 - Keyword fallback for toxicity
-- Local Ollama (`llama3.2`) for title generation
+- Ollama (configurable model via `LLM_MODEL`) for title generation
 
 ### External API
 
@@ -89,10 +89,13 @@ Required in `.env`:
 - `DATABASE_URL`
 - `SECRET_KEY`
 - `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `ALGORITHM`
 - `REDIS_URL`
 - `HF_API_KEY`
+- `OLLAMA_BASE_URL`
+- `LLM_MODEL`
 
 Optional model overrides:
 
@@ -229,9 +232,9 @@ $$
 
 ### Comments
 
-#### `POST /fetch_comments`
+#### `POST /fetch-comments`
 
-- Auth: not required (current behavior)
+- Auth: required
 - Input: `RequestComment` (`video_db_id`)
 - Behavior:
   - resolves video ID from DB
@@ -243,7 +246,7 @@ $$
 
 #### `POST /comment_analysis`
 
-- Auth: not required (current behavior)
+- Auth: required
 - Input: `RequestCommentAnalysis` (`video_db_id`)
 - Behavior:
   - fetches stored comments from DB
@@ -255,7 +258,7 @@ $$
 
 #### `POST /video_recommendation/comments`
 
-- Auth: not required (current behavior)
+- Auth: required
 - Input: `RequestTopicsFromComments` (`video_db_id`, `refresh`)
 - Behavior:
   - if `refresh=false`, returns cached predictions from DB when available
@@ -311,7 +314,7 @@ $$
 
 - Topic candidates from regex intent patterns + n-grams
 - Ranking uses frequency, likes, topic length, and intent score
-- Title generation via Ollama chat endpoint (`http://localhost:11434/api/chat`) with model `llama3.2`
+- Title generation via Ollama chat endpoint (`{OLLAMA_BASE_URL}/api/chat`) with model from `LLM_MODEL`
 
 ## 11. Data Models (Current)
 
@@ -437,16 +440,41 @@ uvicorn app.main:app --reload
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-## 15. Known Gaps / Current Caveats
+## 15. Docker
 
-- Comment endpoints (`/fetch_comments`, `/comment_analysis`, `/video_recommendation/comments`) do not currently require authentication.
+Prebuilt Docker image is available on Docker Hub:
+
+- `eazdanrafin/content-signal-extraction-and-recommendation-api`
+
+### Pull and run from Docker Hub
+
+```bash
+docker pull eazdanrafin/content-signal-extraction-and-recommendation-api:latest
+docker run --rm -p 8000:8000 --env-file .env eazdanrafin/content-signal-extraction-and-recommendation-api:latest
+```
+
+### Build locally
+
+```bash
+docker build -t eazdanrafin/content-signal-extraction-and-recommendation-api:latest .
+docker run --rm -p 8000:8000 --env-file .env eazdanrafin/content-signal-extraction-and-recommendation-api:latest
+```
+
+### Docker Compose (if using `docker-compose.yml`)
+
+```bash
+docker compose up --build
+```
+
+## 16. Known Gaps / Current Caveats
+
 - OTP value is printed in logs (development behavior).
 - DB connection dependency retries forever if DB is unavailable.
 - Video ingestion currently fetches only one playlist page (20 videos).
 - Mixed HTTP clients are used across modules (`requests`, `httpx`, `aiohttp`).
-- Title generation requires local Ollama availability.
+- Title generation requires reachable Ollama service at `OLLAMA_BASE_URL`.
 
-## 16. Status Summary
+## 17. Status Summary
 
 Implemented and working in repository:
 
