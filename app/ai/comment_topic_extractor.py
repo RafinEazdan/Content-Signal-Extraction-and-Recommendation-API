@@ -13,10 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class CommentTopicExtractor:
-    """
-    Extracts and ranks video topic suggestions from YouTube comments,
-    then uses an LLM to generate compelling video titles.
-    """
 
     INTENT_PATTERNS = [
         re.compile(r"(?:make|create|upload|do|explain|cover|discuss)\s+(?:a\s+)?(?:video\s+)?(?:on|about)?\s+(?P<topic>[a-zA-Z0-9\s\-]{3,60})", re.IGNORECASE),
@@ -32,9 +28,6 @@ class CommentTopicExtractor:
         self.ollama_url = ollama_url
         self.model = LLM_MODEL
 
-    # ------------------------------------------------------------------ #
-    #  Text helpers                                                        #
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     def _clean(text: str) -> str:
@@ -55,10 +48,6 @@ class CommentTopicExtractor:
         """Cut off at conjunctions or sentence-ending punctuation."""
         return re.split(r"\b(?:because|but|and|so|if|please|thanks)\b|[.,!?]", text)[0].strip()
 
-    # ------------------------------------------------------------------ #
-    #  Extraction                                                          #
-    # ------------------------------------------------------------------ #
-
     def _extract_regex_topics(self, comment: str) -> list[str]:
         """
         Find ALL intent-based matches in a comment (not just the first).
@@ -67,9 +56,9 @@ class CommentTopicExtractor:
         yields both X and Y.
         """
         topics = []
-        seen = set()                               # FIX 3: dedupe within one comment
+        seen = set()                               
         for pattern in self.INTENT_PATTERNS:
-            for match in pattern.finditer(comment):   # FIX 3: finditer → all matches
+            for match in pattern.finditer(comment):   
                 raw   = match.group("topic")
                 topic = self._normalize(self._trim_topic(raw))
                 if len(topic) >= 3 and topic not in seen:
@@ -127,8 +116,8 @@ class CommentTopicExtractor:
         score = count*0.5 + log(likes+1)*0.2 + length_bonus*0.1 + intent_bonus*0.2
         """
         num_words    = len(topic.split())
-        length_bonus = min(num_words / 3, 1.0)            # FIX 4
-        intent_bonus = min(intent_count, 1.0)             # FIX 1: count → clamped to 1.0
+        length_bonus = min(num_words / 3, 1.0)            
+        intent_bonus = min(intent_count, 1.0)             
         return (
             count * 0.5
             + math.log(total_likes + 1) * 0.2
@@ -140,7 +129,7 @@ class CommentTopicExtractor:
 
         topic_counts       = Counter()
         topic_likes        = defaultdict(int)
-        topic_intent_count = defaultdict(int)   # FIX 1: count not bool
+        topic_intent_count = defaultdict(int)   
 
         for entry in comments:
             raw_text = self._clean(entry.get("text", ""))
@@ -158,7 +147,7 @@ class CommentTopicExtractor:
 
             # --- n-gram topics ---
             for topic in self._extract_ngram_topics(raw_text):
-                if topic not in seen_topics:          # FIX 2: skip if already seen
+                if topic not in seen_topics:          
                     topic_counts[topic]  += 1
                     topic_likes[topic]   += likes
                     seen_topics.add(topic)
