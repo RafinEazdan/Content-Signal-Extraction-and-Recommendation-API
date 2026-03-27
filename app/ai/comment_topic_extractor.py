@@ -3,6 +3,10 @@ import math
 import logging
 import requests
 from collections import Counter, defaultdict
+from app.core.config import settings
+
+OLLAMA_BASE_URL = settings.OLLAMA_BASE_URL
+LLM_MODEL = settings.LLM_MODEL
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,10 +27,10 @@ class CommentTopicExtractor:
     # Weak single-word or meaningless phrases to discard from n-grams
     WEAK_PHRASES = {"this video", "this channel", "great video", "love this", "good job", "thank you", "keep up"}
 
-    def __init__(self, top_n: int = 10, ollama_url: str = "http://localhost:11434"):
+    def __init__(self, top_n: int = 10, ollama_url: str = OLLAMA_BASE_URL):
         self.top_n = top_n
         self.ollama_url = ollama_url
-        self.model = "llama3.2"
+        self.model = LLM_MODEL
 
     # ------------------------------------------------------------------ #
     #  Text helpers                                                        #
