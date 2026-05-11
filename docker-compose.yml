@@ -1,7 +1,7 @@
 version: '3.8'
 services: 
   api:
-    build: .
+    build: ./youtube
     depends_on:
       - postgres
       - redis
@@ -9,9 +9,9 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - ./:/usr/src/app:ro
+      - ./youtube:/usr/src/app:ro
     env_file:
-      - ./.env
+      - ./youtube/.env
     command: >
       sh -c "
       alembic upgrade head &&
@@ -21,7 +21,7 @@ services:
   postgres:
     image: postgres:15
     env_file:
-      - .env
+      - ./youtube/.env
     volumes:
       - postgres-db:/var/lib/postgresql/data
 
@@ -39,7 +39,7 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     env_file:
-      - .env
+      - ./youtube/.env
     command: >
       sh -c "
       ollama serve &
