@@ -1,13 +1,26 @@
 version: '3.8'
-services: 
+services:
+  authentication:
+    build: ./authentication
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - 8001:8001
+    volumes:
+      - ./authentication:/usr/src/app:ro
+    env_file:
+      - ./authentication/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+
   api:
     build: ./youtube
     depends_on:
       - postgres
       - redis
-      - ollama
+      - llm
     ports:
-      - 8000:8000
+      - 8003:8003
     volumes:
       - ./youtube:/usr/src/app:ro
     env_file:
@@ -17,6 +30,36 @@ services:
       alembic upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
+
+  reddit:
+    build: ./reddit
+    depends_on:
+      - postgres
+      - redis
+      - llm
+    ports:
+      - 8002:8002
+    volumes:
+      - ./reddit:/usr/src/app:ro
+    env_file:
+      - ./reddit/.env
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8002
+      "
+
+  llm:
+    build: ./llm
+    depends_on:
+      - ollama
+    ports:
+      - 8004:8004
+    volumes:
+      - ./llm:/usr/src/app:ro
+    env_file:
+      - ./llm/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8004
 
   postgres:
     image: postgres:15
@@ -38,13 +81,13 @@ services:
       - 11434:11434
     volumes:
       - ollama-data:/root/.ollama
-    env_file:
-      - ./youtube/.env
+    environment:
+      - LLM_MODEL=tinyllama
     command: >
       sh -c "
       ollama serve &
       sleep 5 &&
-      ollama pull ${LLM_MODEL} &&
+      ollama pull tinyllama &&
       wait
       "
 

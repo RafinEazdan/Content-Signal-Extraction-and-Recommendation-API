@@ -1,13 +1,13 @@
+import json
 from fastapi import HTTPException
 from psycopg import Connection
-import json
 
-from youtube.app.core.security import hash
-from youtube.app.services.otp_service import OTPService
+from app.core.security import hash
+from app.services.otp_service import OTPService
 
 
 class SignupService:
-    def __init__(self,db: Connection,redis):
+    def __init__(self, db: Connection, redis):
         self.db = db
         self.redis = redis
 
@@ -15,23 +15,19 @@ class SignupService:
         try:
             cursor = self.db.cursor()
             cursor.execute("SELECT id FROM users WHERE email = %s;", (email,))
-            existing_user = cursor.fetchone()
-
-            if existing_user:
+            if cursor.fetchone():
                 raise HTTPException(status_code=409, detail="Email already registered. Please login.")
-            
             return True
-            
         except HTTPException:
-            raise  # ← let it pass through untouched
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    async def send_otp(self, email, password, username,profilepic):
+    async def send_otp(self, email, password, username, profilepic):
         hashed_password = hash(password)
         otp_service = OTPService(self.redis)
-        return await otp_service.generate_otp(email,hashed_password, username,profilepic)
-    
+        return await otp_service.generate_otp(email, hashed_password, username, profilepic)
+
     async def verify_user(self, email, otp):
         otp_service = OTPService(self.redis)
         return await otp_service.verify_otp(email, otp)
@@ -44,25 +40,18 @@ class SignupService:
 
         data_block = json.loads(data)
 
-        email = data_block["email"]
-        hashed_password = data_block["hashed_password"]
-        username = data_block["username"]
-        profilepic = data_block["profilepic"]
-
         try:
             cursor = self.db.cursor()
             cursor.execute(
-                    """
-                    INSERT INTO users (email, username, hashed_password, profile_pic)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING *;
-                    """,
-                    (email, username, hashed_password, profilepic)
-                )
+                """
+                INSERT INTO users (email, username, hashed_password, profile_pic)
+                VALUES (%s, %s, %s, %s)
+                RETURNING *;
+                """,
+                (data_block["email"], data_block["hashed_password"], data_block["username"], data_block["profilepic"])
+            )
             user = cursor.fetchone()
-
             self.db.commit()
-
             await self.redis.delete(f"reg:{email}")
 
             return {
@@ -72,15 +61,6 @@ class SignupService:
                 "created_at": user["created_at"],
                 "profile_pic": user["profile_pic"]
             }
-
         except Exception as e:
             self.db.rollback()
             raise HTTPException(status_code=500, detail=f"User registration failed: {e}")
-    
-    
-        
-
-
-    
-
-    

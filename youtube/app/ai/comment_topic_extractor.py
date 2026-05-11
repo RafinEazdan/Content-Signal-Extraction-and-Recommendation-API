@@ -1,12 +1,11 @@
 import re
 import math
 import logging
-import requests
+import httpx
 from collections import Counter, defaultdict
 from youtube.app.core.config import settings
 
-OLLAMA_BASE_URL = settings.OLLAMA_BASE_URL
-LLM_MODEL = settings.LLM_MODEL
+LLM_SERVICE_URL = settings.LLM_SERVICE_URL
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,10 +22,9 @@ class CommentTopicExtractor:
     # Weak single-word or meaningless phrases to discard from n-grams
     WEAK_PHRASES = {"this video", "this channel", "great video", "love this", "good job", "thank you", "keep up"}
 
-    def __init__(self, top_n: int = 10, ollama_url: str = OLLAMA_BASE_URL):
+    def __init__(self, top_n: int = 10):
         self.top_n = top_n
-        self.ollama_url = ollama_url
-        self.model = LLM_MODEL
+        self.llm_url = LLM_SERVICE_URL
 
 
     @staticmethod
@@ -194,18 +192,14 @@ class CommentTopicExtractor:
             "Return ONLY a numbered list of titles, one per line."
         )
 
-        response = requests.post(
-            f"{self.ollama_url}/api/chat",
-            json={
-                "model": self.model,
-                "stream": False,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=60,
+        response = httpx.post(
+            f"{self.llm_url}/generate",
+            json={"prompt": prompt},
+            timeout=120,
         )
         response.raise_for_status()
 
-        raw = response.json()["message"]["content"].strip()
+        raw = response.json()["text"].strip()
         titles = [
             re.sub(r"^\d+[\.\)]\s*", "", line).strip()
             for line in raw.splitlines()

@@ -11,8 +11,7 @@ class Settings(BaseSettings):
     ALGORITHM : str
     REDIS_URL : str
     HF_API_KEY : str
-    OLLAMA_BASE_URL : str
-    LLM_MODEL : str
+    LLM_SERVICE_URL : str
 
     class Config:
         env_file = '.env'
