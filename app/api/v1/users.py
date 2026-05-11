@@ -1,15 +1,12 @@
-from jinja2 import DictLoader
 from app.redis.dependencies import get_redis
 from app.services.oauth import get_current_user
-import app.core.security as security
 from app.database.session import get_db
-from fastapi import Depends, HTTPException, status, Response, APIRouter
+from fastapi import Depends, status, Response, APIRouter
 from psycopg import Connection
-from psycopg.errors import UniqueViolation
 import app.schemas.users as schemas
-from typing import List
 
 from app.services.signup_service import SignupService
+from app.services.profile_service import ProfileService
 
 
 router = APIRouter(
@@ -57,25 +54,12 @@ async def verify_and_signup(payload: schemas.OTPVerifyRequest,db : Connection= D
 
 
 @router.get('/profile', response_model=schemas.UserResponse)
-def get_users(db: Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user["id"] is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='You must login first!')
-    with db.cursor() as cursor:
-        cursor.execute(''' SELECT * from users where id = %s; ''', (current_user["id"],))
-        users = cursor.fetchone()
-    if users is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User details is unavailable')
-    return users
+def get_profile(db: Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    service = ProfileService(db)
+    return service.get_profile(current_user["id"])
 
 @router.delete('/profile/delete', status_code=status.HTTP_204_NO_CONTENT)
-def delete_users(db: Connection = Depends(get_db), current_user: DictLoader = Depends(get_current_user)):
-    with db.cursor() as cursor:
-        cursor.execute('Delete from users where id = %s;',(current_user["id"],))
-        deleted_user = cursor.rowcount
-
-    db.commit()
-
-    if deleted_user == 0:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not logged in!")
-    
+def delete_profile(db: Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    service = ProfileService(db)
+    service.delete_profile(current_user["id"])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
