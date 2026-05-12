@@ -48,7 +48,7 @@ class SignupService:
                 VALUES (%s, %s, %s, %s)
                 RETURNING *;
                 """,
-                (data_block["email"], data_block["hashed_password"], data_block["username"], data_block["profilepic"])
+                (data_block["email"], data_block["username"], data_block["hashed_password"], data_block["profilepic"])
             )
             user = cursor.fetchone()
             self.db.commit()

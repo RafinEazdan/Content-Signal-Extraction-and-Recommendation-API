@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.core.config import ROUTE_MAP
@@ -18,6 +19,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="API Gateway", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Headers that must not be forwarded to the upstream service.
 _HOP_BY_HOP = {
