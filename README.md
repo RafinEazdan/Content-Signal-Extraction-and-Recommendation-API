@@ -120,8 +120,7 @@ Each service reads its own `.env` file. There is no shared env file.
 - `REDIS_URL`
 - `YT_API_KEY`
 - `HF_API_KEY`
-- `OLLAMA_BASE_URL`
-- `LLM_MODEL`
+- `LLM_SERVICE_URL`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
 - `HF_SENTIMENT_MODEL` (optional; default: `distilbert/distilbert-base-uncased-finetuned-sst-2-english`)
