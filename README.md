@@ -1,12 +1,8 @@
 # Content Signal Extraction and Recommendation API
 
-The monolith is gone. What replaced it is five independent services — authentication, YouTube, Reddit, LLM, and an API gateway — each running its own process, owning its own data, and deployable without touching the others.
+Five independent services — authentication, YouTube, Reddit, LLM, and an API gateway — each running its own process, owning its own data, and deployable without touching the others.
 
-## What Changed
-
-The original codebase was a single FastAPI app with eight routers and one database. Every request — login, channel fetch, comment analysis, title generation — landed in the same process. That worked until it didn't: Ollama calls blocking comment ingestion, auth migrations coupled to YouTube schema changes, no way to scale the LLM workload independently.
-
-The rewrite split the monolith along its natural seams. Authentication is its own service. YouTube signal extraction is its own service. Reddit trending analysis is its own service. LLM generation is its own service. An API gateway sits in front of all four, routing by path prefix, stripping hop-by-hop headers, and forwarding everything else upstream unchanged.
+Authentication handles accounts and JWT issuance. The YouTube service ingests channel data, videos, metrics, comments, and runs AI analysis. The Reddit service pulls trending posts and generates video ideas from them. The LLM service is a thin Ollama wrapper that both YouTube and Reddit call for text generation. An API gateway sits in front of all four, routing by path prefix and proxying requests upstream unchanged.
 
 ## Architecture
 
@@ -80,13 +76,70 @@ Endpoints:
 
 ## Running Locally
 
+### Docker Compose
+
 ```bash
 docker compose up --build
 ```
 
 The compose file starts all five services plus PostgreSQL 15, Redis 7-alpine, and Ollama. Ollama pulls `tinyllama` on first boot. YouTube and Reddit services run `alembic upgrade head` before starting uvicorn.
 
-Service URLs after `docker compose up`:
+### Without Docker
+
+Each service has its own `requirements.txt` and needs its own venv. Run each in a separate terminal from the repo root. Start the gateway last.
+
+PostgreSQL, Redis, and Ollama still need to be running — either locally or via `docker compose up postgres redis ollama`.
+
+**Authentication (port 8001)**
+```bash
+cd authentication && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+uvicorn app.main:app --port 8001 --reload
+```
+
+**YouTube (port 8003)**
+```bash
+cd youtube && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --port 8003 --reload
+```
+
+**Reddit (port 8002)**
+```bash
+cd reddit && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --port 8002 --reload
+```
+
+**LLM (port 8004)**
+```bash
+cd llm && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+uvicorn app.main:app --port 8004 --reload
+```
+
+**API Gateway (port 8000)**
+```bash
+cd api-gateway && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+uvicorn app.main:app --port 8000 --reload
+```
+
+#### Migrating from the monolith
+
+If the database previously ran the monolith, the `alembic_version` table will contain a stale revision the YouTube migrations no longer recognise. Stamp it with the current head before running `upgrade head`:
+
+```bash
+cd youtube
+python -c "
+from dotenv import load_dotenv; import os, psycopg; load_dotenv()
+conn = psycopg.connect(os.getenv('DATABASE_URL'))
+conn.cursor().execute(\"UPDATE alembic_version SET version_num = '035c5e921f7f'\")
+conn.commit(); conn.close()
+"
+alembic upgrade head
+```
+
+Reddit tracks its migrations in a separate `alembic_version_reddit` table so it never collides with YouTube's `alembic_version`.
+
+### Service URLs
 
 | Service        | URL                       |
 |----------------|---------------------------|
