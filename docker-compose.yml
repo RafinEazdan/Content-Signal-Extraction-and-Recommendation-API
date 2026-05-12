@@ -1,5 +1,18 @@
 version: '3.8'
 services:
+  api-gateway:
+    build: ./api-gateway
+    depends_on:
+      - authentication
+      - api
+      - reddit
+      - llm
+    ports:
+      - 8000:8000
+    volumes:
+      - ./api-gateway:/usr/src/app:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   authentication:
     build: ./authentication
     depends_on:
@@ -28,7 +41,7 @@ services:
     command: >
       sh -c "
       alembic upgrade head &&
-      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      uvicorn app.main:app --host 0.0.0.0 --port 8003
       "
 
   reddit:
