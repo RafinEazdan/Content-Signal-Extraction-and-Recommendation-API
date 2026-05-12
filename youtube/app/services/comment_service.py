@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 from passlib import exc
-from youtube.app.core.config import settings
+from app.core.config import settings
 
-from youtube.app.ai.pipeline import analyze_comments
-from youtube.app.ai.comment_topic_extractor import CommentTopicExtractor
+from app.ai.pipeline import analyze_comments
+from app.ai.comment_topic_extractor import CommentTopicExtractor
 
 YT_API_KEY = settings.YT_API_KEY
 

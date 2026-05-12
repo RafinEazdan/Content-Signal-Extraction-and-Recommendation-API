@@ -7,8 +7,8 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from psycopg import Connection
 
-import youtube.app.schemas.users as schemas
-from youtube.app.database.session import get_db
+import app.schemas.users as schemas
+from app.database.session import get_db
 
 load_dotenv()
 

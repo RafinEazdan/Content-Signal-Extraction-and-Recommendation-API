@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
-from youtube.app.services import comment_service
-from youtube.app.services.comment_service import CommentService
-from youtube.app.database.session import get_db
-from youtube.app.schemas.comments import ResponseComment, RequestComment
-from youtube.app.services.oauth import get_current_user
+from app.services import comment_service
+from app.services.comment_service import CommentService
+from app.database.session import get_db
+from app.schemas.comments import ResponseComment, RequestComment
+from app.services.oauth import get_current_user
 
 router = APIRouter()
 

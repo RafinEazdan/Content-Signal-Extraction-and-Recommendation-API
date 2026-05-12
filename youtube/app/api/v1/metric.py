@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from psycopg import Connection
 
-from youtube.app.database.session import get_db
-from youtube.app.redis.dependencies import get_redis
-from youtube.app.services.metrics_video import video_metrics
-from youtube.app.schemas.metrics import RequestMetrics, ResponseMetrics
-from youtube.app.services.oauth import get_current_user
+from app.database.session import get_db
+from app.redis.dependencies import get_redis
+from app.services.metrics_video import video_metrics
+from app.schemas.metrics import RequestMetrics, ResponseMetrics
+from app.services.oauth import get_current_user
 router = APIRouter(
     prefix='/metrics',
     tags=['metrics']

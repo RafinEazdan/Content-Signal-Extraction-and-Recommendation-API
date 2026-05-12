@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 HF_API_KEY = settings.HF_API_KEY
 

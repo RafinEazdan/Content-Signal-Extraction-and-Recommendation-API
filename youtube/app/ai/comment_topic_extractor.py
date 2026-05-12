@@ -3,7 +3,7 @@ import math
 import logging
 import httpx
 from collections import Counter, defaultdict
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 LLM_SERVICE_URL = settings.LLM_SERVICE_URL
 

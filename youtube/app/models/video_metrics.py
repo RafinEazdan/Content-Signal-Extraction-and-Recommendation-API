@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Float, Date, ForeignKey, String, UniqueConstraint
-from youtube.app.database.base import Base
+from app.database.base import Base
 
 class VideoMetric(Base):
     __tablename__ = "video_metrics"

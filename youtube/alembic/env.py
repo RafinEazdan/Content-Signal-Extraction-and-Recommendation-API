@@ -1,4 +1,5 @@
-from json import load
+import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -6,16 +7,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-import os
-from dotenv import load_dotenv
-from youtube.app.database.base import Base
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import youtube.app.models.channel
-import youtube.app.models.user
-import youtube.app.models.video
-import youtube.app.models.video_metrics
-import youtube.app.models.comments
-import youtube.app.models.predicted_titles
+from dotenv import load_dotenv
+from app.database.base import Base
+
+import app.models.channel
+import app.models.user
+import app.models.video
+import app.models.video_metrics
+import app.models.comments
+import app.models.predicted_titles
 
 
 load_dotenv()

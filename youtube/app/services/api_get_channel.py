@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 import requests
 
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 
 YT_API_KEY = settings.YT_API_KEY

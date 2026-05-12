@@ -2,10 +2,10 @@ from aiohttp.web_routedef import route
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
-from youtube.app.schemas.video_recommendation import RequestTopicsFromComments, ResponseTopicsFromComments
-from youtube.app.services.comment_service import CommentService
-from youtube.app.database.session import get_db
-from youtube.app.services.oauth import get_current_user
+from app.schemas.video_recommendation import RequestTopicsFromComments, ResponseTopicsFromComments
+from app.services.comment_service import CommentService
+from app.database.session import get_db
+from app.services.oauth import get_current_user
 
 router = APIRouter(
     prefix='/video_recommendation',

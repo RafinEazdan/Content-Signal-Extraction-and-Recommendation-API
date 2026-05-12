@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from youtube.app.api.v1 import video_recommendation
-from youtube.app.api.v1 import channel, comment, comment_analysis, metric, video
+from app.api.v1 import video_recommendation
+from app.api.v1 import channel, comment, comment_analysis, metric, video
 
 app = FastAPI()
 

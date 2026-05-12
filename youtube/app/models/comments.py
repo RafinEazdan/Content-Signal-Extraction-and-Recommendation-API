@@ -1,6 +1,6 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 
-from youtube.app.database.base import Base
+from app.database.base import Base
 
 
 class Comment(Base):

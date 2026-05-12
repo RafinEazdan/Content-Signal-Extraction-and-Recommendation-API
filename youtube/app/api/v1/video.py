@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
-from youtube.app.database.session import get_db
-from youtube.app.models import video
-from youtube.app.services.oauth import get_current_user
-from youtube.app.services.video_service import VideoService
-from youtube.app.schemas.videos import VideoRequest, VideoResponse
+from app.database.session import get_db
+from app.models import video
+from app.services.oauth import get_current_user
+from app.services.video_service import VideoService
+from app.schemas.videos import VideoRequest, VideoResponse
 
 router = APIRouter(
     prefix='/videos',

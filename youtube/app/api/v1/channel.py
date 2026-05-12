@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg import Connection
 
-from youtube.app.database.session import get_db
-from youtube.app.schemas.channels import ChannelRequest, ChannelResponse
-from youtube.app.services.oauth import get_current_user
-from youtube.app.services.api_get_channel import get_channel
-from youtube.app.redis.dependencies import get_redis
-from youtube.app.services.fetch_create_channel import fetch_create_channel
+from app.database.session import get_db
+from app.schemas.channels import ChannelRequest, ChannelResponse
+from app.services.oauth import get_current_user
+from app.services.api_get_channel import get_channel
+from app.redis.dependencies import get_redis
+from app.services.fetch_create_channel import fetch_create_channel
 
 
 router = APIRouter(

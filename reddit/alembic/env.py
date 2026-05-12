@@ -1,9 +1,12 @@
 import os
+import sys
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-from dotenv import load_dotenv
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from dotenv import load_dotenv
 from app.database.base import Base
 import app.models.reddit_post  # noqa: F401 — registers model with Base
 
@@ -27,6 +30,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table="alembic_version_reddit",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -39,7 +43,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, version_table="alembic_version_reddit")
         with context.begin_transaction():
             context.run_migrations()
 

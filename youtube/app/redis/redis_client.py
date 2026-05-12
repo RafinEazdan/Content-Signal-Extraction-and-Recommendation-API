@@ -1,6 +1,6 @@
 from jwt import decode
 import redis.asyncio as redis
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 class RedisClient:
     def __init__(self):

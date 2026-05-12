@@ -1,7 +1,7 @@
 import psycopg
 from psycopg.rows import dict_row
 import time
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 

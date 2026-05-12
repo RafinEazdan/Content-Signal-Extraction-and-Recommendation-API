@@ -2,7 +2,7 @@ from psycopg import Connection
 from datetime import date
 import httpx
 from fastapi import HTTPException, status
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 YT_API_KEY = settings.YT_API_KEY
 

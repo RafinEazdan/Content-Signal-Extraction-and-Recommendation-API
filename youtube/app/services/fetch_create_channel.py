@@ -1,6 +1,6 @@
 import json
 
-from youtube.app.services.api_get_channel import get_channel
+from app.services.api_get_channel import get_channel
 
 redis_expiry = 604800
 

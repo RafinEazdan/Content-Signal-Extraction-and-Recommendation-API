@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from youtube.app.services.comment_service import CommentService
-from youtube.app.database.session import get_db
-from youtube.app.schemas.comment_analysis import RequestCommentAnalysis
-from youtube.app.services.oauth import get_current_user
+from app.services.comment_service import CommentService
+from app.database.session import get_db
+from app.schemas.comment_analysis import RequestCommentAnalysis
+from app.services.oauth import get_current_user
 
 router = APIRouter()
 

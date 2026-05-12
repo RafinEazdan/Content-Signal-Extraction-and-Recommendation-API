@@ -1,4 +1,4 @@
-from youtube.app.database.base import Base
+from app.database.base import Base
 
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, String, text
 

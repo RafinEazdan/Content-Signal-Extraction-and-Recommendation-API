@@ -3,7 +3,7 @@ from psycopg import Connection
 import requests
 import httpx
 
-from youtube.app.core.config import settings
+from app.core.config import settings
 
 
 YT_API_KEY = settings.YT_API_KEY
