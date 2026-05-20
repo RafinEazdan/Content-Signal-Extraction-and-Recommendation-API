@@ -71,8 +71,6 @@ services:
 
   llm:
     build: ./llm
-    depends_on:
-      - ollama
     ports:
       - 8004:8004
     volumes:
@@ -85,6 +83,8 @@ services:
     image: postgres:15
     env_file:
       - ./youtube/.env
+    ports:
+      - "5433:5432" 
     volumes:
       - postgres-db:/var/lib/postgresql/data
 
@@ -95,23 +95,6 @@ services:
     volumes:
       - redis-data:/data
 
-  ollama:
-    image: ollama/ollama
-    ports:
-      - 11434:11434
-    volumes:
-      - ollama-data:/root/.ollama
-    environment:
-      - LLM_MODEL=tinyllama
-    command: >
-      sh -c "
-      ollama serve &
-      sleep 5 &&
-      ollama pull tinyllama &&
-      wait
-      "
-
 volumes:
   postgres-db:
   redis-data:
-  ollama-data:
