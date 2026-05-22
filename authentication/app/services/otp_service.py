@@ -19,7 +19,8 @@ class OTPService:
         await self.redis.set(f"reg:{email}", json.dumps(data_block), expire=500)
         print(f"OTP is: {otp}")  # development only
 
-        return {"message": "OTP sent to email. Please check your inbox and spam folder."}
+        # TODO: replace with real email delivery; remove dev_otp from response
+        return {"message": "OTP sent to email. Please check your inbox and spam folder.", "dev_otp": otp}
 
     async def verify_otp(self, user_email, user_otp):
         data = await self.redis.get(f"reg:{user_email}")

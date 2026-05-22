@@ -6,12 +6,12 @@ from app.core.config import settings
 
 class GeminiService:
     def __init__(self):
-        self.Client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
         self.model = settings.GEMINI_MODEL
 
     def generate(self, prompt:str, system: str | None = None) -> str:
         try:
-            response = self.client.models.generate_content(model=self.model, content=prompt,
+            response = self.client.models.generate_content(model=self.model, contents=prompt,
                                                            config = {
                                                                "system_instruction": system
                                                            } if system else None,)

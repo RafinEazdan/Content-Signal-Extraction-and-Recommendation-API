@@ -22,7 +22,7 @@ app = FastAPI(title="API Gateway", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,12 +86,18 @@ async def proxy(request: Request, path: str):
 
     body = await request.body()
 
-    upstream_response = await _client.request(
-        method=request.method,
-        url=upstream_url,
-        headers=headers,
-        content=body,
-    )
+    try:
+        upstream_response = await _client.request(
+            method=request.method,
+            url=upstream_url,
+            headers=headers,
+            content=body,
+        )
+    except httpx.RequestError as exc:
+        return Response(
+            content=f"Upstream request failed: {exc}",
+            status_code=502,
+        )
 
     response_headers = {
         k: v

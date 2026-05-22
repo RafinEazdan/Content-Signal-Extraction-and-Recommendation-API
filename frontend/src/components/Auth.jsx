@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { login, sendOtp, verifyOtp } from '../api'
 
-export function Auth({ onLogin }) {
+export function Auth({ onLogin, onAbout }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'otp'
   const [form, setForm] = useState({ email: '', password: '', username: '', otp: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [devOtp, setDevOtp] = useState('')
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
@@ -32,7 +33,8 @@ export function Auth({ onLogin }) {
   async function handleSendOtp(e) {
     e.preventDefault()
     await run(async () => {
-      await sendOtp(form.email, form.password, form.username)
+      const res = await sendOtp(form.email, form.password, form.username)
+      if (res?.dev_otp) setDevOtp(res.dev_otp)
       setMode('otp')
     })
   }
@@ -50,8 +52,11 @@ export function Auth({ onLogin }) {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>Random Thoughts</h1>
-          <p className="muted">Content Signal &amp; Recommendation</p>
+          <h1>CERA</h1>
+          <p className="muted">Content Extraction and Recommendation API</p>
+          <button type="button" className="about-link" onClick={onAbout}>
+            About &amp; Architecture →
+          </button>
         </div>
 
         {mode !== 'otp' && (
@@ -125,7 +130,9 @@ export function Auth({ onLogin }) {
         {mode === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="form-stack">
             <div className="info-box">
-              OTP printed to the authentication service stdout — check your docker logs.
+              {devOtp
+                ? <>Dev mode — your OTP is: <strong>{devOtp}</strong></>
+                : 'OTP printed to the authentication service stdout — check your docker logs.'}
             </div>
             <input
               type="text"
