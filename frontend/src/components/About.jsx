@@ -4,7 +4,7 @@ export function About() {
 
       <div className="about-hero">
         <div className="about-logo">CERA</div>
-        <p className="about-tagline">Content Extraction and Recommendation API</p>
+        <p className="about-tagline">Content Signal Extraction and Recommendation API</p>
       </div>
 
       <section className="about-section">
@@ -193,7 +193,7 @@ export function About() {
       </section>
 
       <footer className="about-footer">
-        <span>CERA — Content Extraction and Recommendation API</span>
+        <span>CERA — Content Signal Extraction and Recommendation API</span>
       </footer>
 
     </div>

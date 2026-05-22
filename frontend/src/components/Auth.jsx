@@ -53,7 +53,7 @@ export function Auth({ onLogin, onAbout }) {
       <div className="auth-card">
         <div className="auth-header">
           <h1>CERA</h1>
-          <p className="muted">Content Extraction and Recommendation API</p>
+          <p className="muted">Content Signal Extraction and Recommendation API</p>
           <button type="button" className="about-link" onClick={onAbout}>
             About &amp; Architecture →
           </button>
