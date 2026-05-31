@@ -43,7 +43,6 @@ _HOP_BY_HOP = {
 
 
 def _resolve_upstream(path: str) -> tuple[str, str] | None:
-    """Return (upstream_base_url, stripped_path) for the first matching prefix."""
     for prefix, upstream in ROUTE_MAP:
         if path.startswith(prefix):
             return upstream, path[len(prefix):]
